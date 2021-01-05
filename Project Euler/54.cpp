@@ -10,7 +10,7 @@
 
 const size_t handSize = 5;
 
-enum pokerRank {
+enum class pokerRank {
 	High_Card, One_Pair = 4*handSize, Two_Pairs, Three_of_a_Kind, Straight, Flush, Full_House, Four_of_a_Kind, Straight_Flush, Royal_Flush
 };
 
