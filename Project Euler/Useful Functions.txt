@@ -1,0 +1,133 @@
+// Simple test that uses the property that primes > 3 are of the form 6k +- 1
+bool isPrime(unsigned n) {
+	if (n <= 3) return (n > 1);
+	if (n % 2 == 0 || n % 3 == 0) return false;
+	for (unsigned i = 5; i*i <= n; i += 6)	// check all numbers up to sqrt(n) of the form 6k +- 1
+		if (n % i == 0 || n % (i + 2) == 0) return false;
+	return true;
+}
+
+// Returns the number of distinct prime factors of n
+unsigned numDistinctPrimeFactors(unsigned n) {
+	if (n < 2) return 0;
+	unsigned count = 0, half = n/2;
+	for (unsigned p = 2; p < half; p++) {
+		if (!isPrime(p)) continue;
+		if (n%p == 0) count++;
+		while (n%p == 0) n /= p;
+		if (n == 1) break;
+	}
+	if (count == 0) count = 1;	// n is prime
+	return count;
+}
+
+// Checks if n can be expressed as integers x^y
+bool isPower(unsigned n) {
+	for (unsigned x = 2; x*x <= n; x++) {
+		unsigned y = 2;
+		unsigned p = (unsigned)pow(x, y);
+		while (p <= n) {
+			if (p == n) return true;
+			y++;
+			p = (unsigned)pow(x, y);
+		}
+	}
+	return false;
+}
+
+// Check if a number is square
+bool isSquare(unsigned n) {
+	unsigned root = (unsigned)sqrt(n);
+	return (n == root*root || n == (root+1)*(root+1));	// for floating-point error
+}
+
+// Returns if n is pandigital (for any p-pandigital below 10)
+bool isPandigital(unsigned n) {
+	unsigned numDigits = (unsigned)log10(n)+1;
+	if (numDigits > 9) return false;
+	bool *digits = new bool[numDigits];
+	for (unsigned i = 0; i < numDigits; i++) digits[i] = false;
+	for (unsigned i = 0; i < numDigits; i++) {
+		unsigned d = (unsigned)(n/pow(10, i)) % 10;
+		if (d == 0 || d > numDigits || digits[d-1]) return false;
+		else digits[d-1] = true;
+	}
+	return true;
+}
+
+// Number of digits of n
+unsigned numDigits = (unsigned)log10(n)+1;
+
+// Digit of the number n at position i (i=0 is the one's place)
+unsigned digit = (unsigned)(n/pow(10, i)) % 10;
+
+// Generate all pandigital numbers of length 1-9
+for (int n = 9; n > 0; n--) {	// n length pandigital numbers
+	int a = (n > 8) ? n : 0;
+	do {
+		int b = (n > 7) ? n : 0;
+		do {
+			if (b != 0 && b == a) { b--; continue; }
+			int c = (n > 6) ? n : 0;
+			do {
+				if (c != 0 && (c == b || c == a)) { c--; continue; }
+				int d = (n > 5) ? n : 0;
+				do {
+					if (d != 0 && (d == c || d == b || d == a)) { d--; continue; }
+					int e = (n > 4) ? n : 0;
+					do {
+						if (e != 0 && (e == d || e == c || e == b || e == a)) { e--; continue; }
+						int f = (n > 3) ? n : 0;
+						do {
+							if (f != 0 && (f == e || f == d || f == c || f == b || f == a)) { f--; continue; }
+							int g = (n > 2) ? n : 0;
+							do {
+								if (g != 0 && (g == f || g == e || g == d || g == c || g == b || g == a)) { g--; continue; }
+								int h = (n > 1) ? n : 0;
+								do {
+									if (h != 0 && (h == g || h == f || h == e || h == d || h == c || h == b || h == a)) { h--; continue; }
+									for (int i = n; i > 0; i--) {
+										if (i == h || i == g || i == f || i == e || i == d || i == c || i == b || i == a) { i--; continue; }
+										int num = 100000000*a+10000000*b+1000000*c+100000*d+10000*e+1000*f+100*g+10*h+i;
+										if (isPrime(num)) return num;
+									}
+								h--; } while (h > 0);
+							g--; } while (g > 0);
+						f--; } while (f > 0);
+					e--; } while (e > 0);
+				d--; } while (d > 0);
+			c--; } while (c > 0);
+		b--; } while (b > 0);
+	a--; } while (a > 0);
+}
+
+
+// Generate all 9-digit pandigital numbers in order
+for (unsigned a = 1; a < 10; a++) {
+	for (unsigned b = 1; b < 10; b++) {
+		if (b == a) continue;
+		for (unsigned c = 1; c < 10; c++) {
+			if (c == b || c == a) continue;
+			for (unsigned d = 1; d < 10; d++) {
+				if (d == c || d == b || d == a) continue;
+				for (unsigned e = 1; e < 10; e++) {
+					if (e == d || e == c || e == b || e == a) continue;
+					for (unsigned f = 1; f < 10; f++) {
+						if (f == e || f == d || f == c || f == b || f == a) continue;
+						for (unsigned g = 1; g < 10; g++) {
+							if (g == f || g == e || g == d || g == c || g == b || g == a) continue;
+							for (unsigned h = 1; h < 10; h++) {
+								if (h == g || h == f || h == e || h == d || h == c || h == b || h == a) continue;
+								for (unsigned i = 1; i < 10; i++) {
+									if (i == h || i == g || i == f || i == e || i == d || i == c || i == b || i == a) continue;
+									unsigned num = 100000000*a + 10000000*b + 1000000*c + 100000*d + 10000*e + 1000*f + 100*g + 10*h + i;
+									std::cout << num << "\n";
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

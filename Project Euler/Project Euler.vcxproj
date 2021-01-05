@@ -1,0 +1,483 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{7AE8B98B-A934-4E4D-9E9E-E7402F562CC3}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ProjectEuler</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="13.txt" />
+    <Text Include="18.txt" />
+    <Text Include="22.txt" />
+    <Text Include="42.txt" />
+    <Text Include="54.txt" />
+    <Text Include="ReadMe.txt" />
+    <Text Include="Useful Functions.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="1.h" />
+    <ClInclude Include="10.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="11.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="12.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="13.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="14.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="15.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="16.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="17.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="18.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="19.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="2.h" />
+    <ClInclude Include="20.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="21.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="22.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="23.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="24.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="25.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="26.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="27.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="28.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="29.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="3.h" />
+    <ClInclude Include="30.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="31.h" />
+    <ClInclude Include="32.h" />
+    <ClInclude Include="33.h" />
+    <ClInclude Include="34.h" />
+    <ClInclude Include="35.h" />
+    <ClInclude Include="36.h" />
+    <ClInclude Include="37.h" />
+    <ClInclude Include="38.h" />
+    <ClInclude Include="39.h" />
+    <ClInclude Include="4.h" />
+    <ClInclude Include="40.h" />
+    <ClInclude Include="41.h" />
+    <ClInclude Include="42.h" />
+    <ClInclude Include="43.h" />
+    <ClInclude Include="44.h" />
+    <ClInclude Include="45.h" />
+    <ClInclude Include="46.h" />
+    <ClInclude Include="47.h" />
+    <ClInclude Include="48.h" />
+    <ClInclude Include="49.h" />
+    <ClInclude Include="5.h" />
+    <ClInclude Include="50.h" />
+    <ClInclude Include="51.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="52.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="53.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="54.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="55.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="56.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="57.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="58.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="59.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="6.h" />
+    <ClInclude Include="60.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="7.h" />
+    <ClInclude Include="8.h" />
+    <ClInclude Include="9.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="bigNum.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="1.cpp" />
+    <ClCompile Include="10.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="11.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="12.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="13.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="14.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="15.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="16.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="17.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="18.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="19.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="2.cpp" />
+    <ClCompile Include="20.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="21.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="22.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="23.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="24.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="25.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="26.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="27.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="28.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="29.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="3.cpp" />
+    <ClCompile Include="30.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="31.cpp" />
+    <ClCompile Include="32.cpp" />
+    <ClCompile Include="33.cpp" />
+    <ClCompile Include="34.cpp" />
+    <ClCompile Include="35.cpp" />
+    <ClCompile Include="36.cpp" />
+    <ClCompile Include="37.cpp" />
+    <ClCompile Include="38.cpp" />
+    <ClCompile Include="39.cpp" />
+    <ClCompile Include="4.cpp" />
+    <ClCompile Include="40.cpp" />
+    <ClCompile Include="41.cpp" />
+    <ClCompile Include="42.cpp" />
+    <ClCompile Include="43.cpp" />
+    <ClCompile Include="44.cpp" />
+    <ClCompile Include="45.cpp" />
+    <ClCompile Include="46.cpp" />
+    <ClCompile Include="47.cpp" />
+    <ClCompile Include="48.cpp" />
+    <ClCompile Include="49.cpp" />
+    <ClCompile Include="5.cpp" />
+    <ClCompile Include="50.cpp" />
+    <ClCompile Include="51.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="52.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="53.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="54.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="55.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="56.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="57.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="58.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="59.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="6.cpp" />
+    <ClCompile Include="60.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="7.cpp" />
+    <ClCompile Include="8.cpp" />
+    <ClCompile Include="9.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="bigNum.cpp" />
+    <ClCompile Include="Project Euler.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
