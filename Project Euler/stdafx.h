@@ -16,4 +16,3 @@
 
 #include <iostream>
 #include <string>
-#include "bigNum.h"

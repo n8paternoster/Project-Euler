@@ -55,25 +55,73 @@
     <Filter Include="Source Files\Problems\51-60">
       <UniqueIdentifier>{b212a5b0-2187-47db-b041-1c64d039545c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Problems\61-70">
+      <UniqueIdentifier>{5b59d41a-64e4-45a1-b29e-8fed2bebd733}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Problems\71-80">
+      <UniqueIdentifier>{a3a1068a-0ae4-4db8-9765-62b8ac501a5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Problems\81-90">
+      <UniqueIdentifier>{d0cb69d5-b8d7-4896-abe5-a77e51437807}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Problems\91-100">
+      <UniqueIdentifier>{47ce01a5-fbf3-4721-9477-e1b8e99957f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Problems\61-70">
+      <UniqueIdentifier>{15ec6645-0ae9-403e-9cc3-67b50857c8fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Problems\71-80">
+      <UniqueIdentifier>{ab306822-1c31-49cb-8a35-a3c918b83244}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Problems\81-90">
+      <UniqueIdentifier>{d303f40f-ac76-41a2-9f76-aacfdbde3234}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Problems\91-100">
+      <UniqueIdentifier>{25cd6077-835d-4412-8154-08b65725f3b1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
-    <Text Include="13.txt">
+    <Text Include="Resources\13.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="18.txt">
+    <Text Include="Resources\18.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="22.txt">
+    <Text Include="Resources\22.txt">
       <Filter>Resource Files</Filter>
     </Text>
     <Text Include="Useful Functions.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="42.txt">
+    <Text Include="Resources\42.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="54.txt">
+    <Text Include="Resources\54.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\59.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\67.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\79.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\81.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\89.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\96.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\98.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Resources\99.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
@@ -84,379 +132,631 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="1.h">
+    <ClInclude Include="Headers\1-25\1.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="2.h">
+    <ClInclude Include="Headers\1-25\2.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="3.h">
+    <ClInclude Include="Headers\1-25\3.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="4.h">
+    <ClInclude Include="Headers\1-25\4.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="5.h">
+    <ClInclude Include="Headers\1-25\5.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="6.h">
+    <ClInclude Include="Headers\1-25\6.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="7.h">
+    <ClInclude Include="Headers\1-25\7.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="8.h">
+    <ClInclude Include="Headers\1-25\8.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="9.h">
+    <ClInclude Include="Headers\1-25\9.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="10.h">
+    <ClInclude Include="Headers\1-25\10.h">
       <Filter>Header Files\Problems\1-10</Filter>
     </ClInclude>
-    <ClInclude Include="11.h">
+    <ClInclude Include="Headers\1-25\11.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="12.h">
+    <ClInclude Include="Headers\1-25\12.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="13.h">
+    <ClInclude Include="Headers\1-25\13.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="14.h">
+    <ClInclude Include="Headers\1-25\14.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="15.h">
+    <ClInclude Include="Headers\1-25\15.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="16.h">
+    <ClInclude Include="Headers\1-25\16.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="17.h">
+    <ClInclude Include="Headers\1-25\17.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="18.h">
+    <ClInclude Include="Headers\1-25\18.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="19.h">
+    <ClInclude Include="Headers\1-25\19.h">
       <Filter>Header Files\Problems\11-20</Filter>
     </ClInclude>
-    <ClInclude Include="20.h">
+    <ClInclude Include="Headers\1-25\20.h">
       <Filter>Header Files\Problems\11-20</Filter>
+    </ClInclude>
+    <ClInclude Include="bigNumOLD.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\1-25\21.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\1-25\22.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\1-25\23.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\1-25\24.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\1-25\25.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\26.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\27.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\28.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\29.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\30.h">
+      <Filter>Header Files\Problems\21-30</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\31.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\32.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\33.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\34.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\35.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\36.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\37.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\38.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\39.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\40.h">
+      <Filter>Header Files\Problems\31-40</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\41.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\42.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\43.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\44.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\45.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\46.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\47.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\48.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\49.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\26-50\50.h">
+      <Filter>Header Files\Problems\41-50</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\51.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\52.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\53.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\54.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\55.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\56.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\57.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\58.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\59.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\60.h">
+      <Filter>Header Files\Problems\51-60</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\61.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\62.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\63.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\65.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\64.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\66.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\67.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\68.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\69.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\70.h">
+      <Filter>Header Files\Problems\61-70</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\71.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\72.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\73.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\74.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\51-75\75.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\76-100\76.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\76-100\77.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\76-100\78.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\76-100\79.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\76-100\80.h">
+      <Filter>Header Files\Problems\71-80</Filter>
+    </ClInclude>
+    <ClInclude Include="newBigNum.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="bigNum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="21.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\81.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="22.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\82.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="23.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\83.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="24.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\84.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="25.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\85.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="26.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\86.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="27.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\87.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="28.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\88.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="29.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\89.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="30.h">
-      <Filter>Header Files\Problems\21-30</Filter>
+    <ClInclude Include="Headers\76-100\90.h">
+      <Filter>Header Files\Problems\81-90</Filter>
     </ClInclude>
-    <ClInclude Include="31.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\91.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="32.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\92.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="33.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\94.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="34.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\93.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="35.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\95.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="36.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\96.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="37.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\97.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="38.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\98.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="39.h">
-      <Filter>Header Files\Problems\31-40</Filter>
+    <ClInclude Include="Headers\76-100\99.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
-    <ClInclude Include="40.h">
-      <Filter>Header Files\Problems\31-40</Filter>
-    </ClInclude>
-    <ClInclude Include="41.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="42.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="43.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="44.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="45.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="46.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="47.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="48.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="49.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="50.h">
-      <Filter>Header Files\Problems\41-50</Filter>
-    </ClInclude>
-    <ClInclude Include="51.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="52.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="53.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="54.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="55.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="56.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="57.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="58.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="59.h">
-      <Filter>Header Files\Problems\51-60</Filter>
-    </ClInclude>
-    <ClInclude Include="60.h">
-      <Filter>Header Files\Problems\51-60</Filter>
+    <ClInclude Include="Headers\76-100\100.h">
+      <Filter>Header Files\Problems\91-100</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Project Euler.cpp">
+    <ClCompile Include="Problems.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="1.cpp">
+    <ClCompile Include="Sources\1-25\1.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="2.cpp">
+    <ClCompile Include="Sources\1-25\2.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="3.cpp">
+    <ClCompile Include="Sources\1-25\3.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="4.cpp">
+    <ClCompile Include="Sources\1-25\4.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="5.cpp">
+    <ClCompile Include="Sources\1-25\5.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="6.cpp">
+    <ClCompile Include="Sources\1-25\6.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="7.cpp">
+    <ClCompile Include="Sources\1-25\7.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="8.cpp">
+    <ClCompile Include="Sources\1-25\8.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="9.cpp">
+    <ClCompile Include="Sources\1-25\9.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="10.cpp">
+    <ClCompile Include="Sources\1-25\10.cpp">
       <Filter>Source Files\Problems\1-10</Filter>
     </ClCompile>
-    <ClCompile Include="11.cpp">
+    <ClCompile Include="Sources\1-25\11.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="12.cpp">
+    <ClCompile Include="Sources\1-25\12.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="13.cpp">
+    <ClCompile Include="Sources\1-25\13.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="14.cpp">
+    <ClCompile Include="Sources\1-25\14.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="15.cpp">
+    <ClCompile Include="Sources\1-25\15.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="16.cpp">
+    <ClCompile Include="Sources\1-25\16.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="17.cpp">
+    <ClCompile Include="Sources\1-25\17.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="18.cpp">
+    <ClCompile Include="Sources\1-25\18.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="19.cpp">
+    <ClCompile Include="Sources\1-25\19.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
     </ClCompile>
-    <ClCompile Include="20.cpp">
+    <ClCompile Include="Sources\1-25\20.cpp">
       <Filter>Source Files\Problems\11-20</Filter>
+    </ClCompile>
+    <ClCompile Include="bigNumOLD.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\1-25\21.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\1-25\22.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\1-25\23.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\1-25\24.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\1-25\25.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\26.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\27.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\28.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\29.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\30.cpp">
+      <Filter>Source Files\Problems\21-30</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\31.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\32.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\33.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\34.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\35.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\36.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\37.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\38.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\39.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\40.cpp">
+      <Filter>Source Files\Problems\31-40</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\41.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\42.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\43.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\44.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\45.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\46.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\47.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\48.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\49.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\26-50\50.cpp">
+      <Filter>Source Files\Problems\41-50</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\51.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\53.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\54.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\55.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\56.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\57.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\58.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\59.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\60.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\52.cpp">
+      <Filter>Source Files\Problems\51-60</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\61.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\62.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\63.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\70.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\64.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\65.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\66.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\67.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\68.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\69.cpp">
+      <Filter>Source Files\Problems\61-70</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\71.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\72.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\73.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\74.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\51-75\75.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\76-100\76.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\76-100\77.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\76-100\78.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\76-100\79.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\76-100\80.cpp">
+      <Filter>Source Files\Problems\71-80</Filter>
+    </ClCompile>
+    <ClCompile Include="newBigNum.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="bigNum.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="21.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\81.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="22.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\82.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="23.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\83.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="24.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\84.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="25.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\85.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="26.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\86.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="27.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\87.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="28.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\88.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="29.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\89.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="30.cpp">
-      <Filter>Source Files\Problems\21-30</Filter>
+    <ClCompile Include="Sources\76-100\90.cpp">
+      <Filter>Source Files\Problems\81-90</Filter>
     </ClCompile>
-    <ClCompile Include="31.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\91.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="32.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\92.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="33.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\93.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="34.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\94.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="35.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\95.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="36.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\96.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="37.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\97.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="38.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\98.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="39.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
+    <ClCompile Include="Sources\76-100\99.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
-    <ClCompile Include="40.cpp">
-      <Filter>Source Files\Problems\31-40</Filter>
-    </ClCompile>
-    <ClCompile Include="41.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="42.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="43.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="44.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="45.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="46.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="47.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="48.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="49.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="50.cpp">
-      <Filter>Source Files\Problems\41-50</Filter>
-    </ClCompile>
-    <ClCompile Include="51.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="53.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="54.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="55.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="56.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="57.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="58.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="59.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="60.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
-    </ClCompile>
-    <ClCompile Include="52.cpp">
-      <Filter>Source Files\Problems\51-60</Filter>
+    <ClCompile Include="Sources\76-100\100.cpp">
+      <Filter>Source Files\Problems\91-100</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

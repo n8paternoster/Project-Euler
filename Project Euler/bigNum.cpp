@@ -1,1526 +1,1481 @@
 #include "stdafx.h"
 #include "bigNum.h"
-#include <sstream>
 #include <string>
-#include <limits>
-#include <unordered_map>	// to store remainders during division to check for repetends
+#include <limits>			// std::digits10
+#include <numeric>			// std::lcm
+#include <unordered_map>	// hash table to store remainders during division 
 
-namespace std {
-	// specialize std::hash with the bigNum type
-	template<> struct hash<bigNum> {
-		size_t operator()(const bigNum& n) const {	// assumes no leading/trailing zeros
-			hash<digitType> hasher;
-			size_t h = 0;
-			for (sizeType d = 0; d < n.mSize; d++)
-				h = h * 31 + hasher(n.mDigits[d]);
-			return h;
-		}
-	};
+/* ------------------------------------------------------ */
+/*                      num_type                          */
+/* -------------------------------------------------------*/
+
+// Special member functions
+bigNum::num_type::num_type():
+	digits(new digit_type[mDefaultSize]()), size(mDefaultSize), lsb(0), msb(0), isPositive(true)
+{ }
+bigNum::num_type::num_type(size_type sz):
+	lsb(0), msb(0), isPositive(true)
+{
+	if (sz < 1) sz = mDefaultSize;
+	size = sz;
+	digits = new digit_type[size]();
 }
-
-const sizeType bigNum::defaultPrecision = 10;
-
-bool bigNum::updateState() { // Updates mNumDigits, mIsZero, mIsInteger
-	if (mSize == 0) {
-		mNumDigits = 0;			// should be 1 for the number 0?
-		mIsNegative = false;
-		mIsZero = true;
-		mIsInteger = true;
-		return false;
+bigNum::num_type::num_type(const num_type &other):
+	digits(new digit_type[other.size]()), size(other.size), lsb(other.lsb), msb(other.msb), isPositive(other.isPositive)
+{
+	for (index_type i = 0; i < other.size; i++)
+		digits[i] = other.digits[i];
+}
+bigNum::num_type::num_type(num_type &&other) noexcept:
+	digits(other.digits), size(other.size), lsb(other.lsb), msb(other.msb), isPositive(other.isPositive)
+{
+	other.digits = nullptr;
+}
+bigNum::num_type& bigNum::num_type::operator=(const num_type &other) {
+	if (this == &other) return *this;
+	if (size != other.size) {
+		delete[] digits;
+		size = other.size;
+		digits = new digit_type[other.size]();
 	}
-
-	// Count the fraction digits
-	sizeType numFractionDigits = 0;
-	sizeType start = 0;
-	while (start < mIntegerStart && (mRepetendSize > 0 ? (start < mRepetendStart) : 1) && mDigits[start] == 0) start++;
-	numFractionDigits = mIntegerStart - start;
-
-	// Count the integer digits
-	sizeType numIntegerDigits = 0;
-	sizeType end = mSize - 1;
-	while (end > mIntegerStart && mDigits[end] == 0) end--;
-	numIntegerDigits = end - mIntegerStart + 1;
-
-	mNumDigits = numFractionDigits + numIntegerDigits;
-	if (mNumDigits == 1 && mDigits[mIntegerStart] == 0) {
-		mIsZero = true;
-		mIsNegative = false;	// no representation for -0
-	}  else mIsZero = false;
-	mIsInteger = numFractionDigits > 0 ? false : true;
-
-	return true;
-}
-
-void bigNum::setNegative() {
-	mIsNegative = true;
-}
-
-void bigNum::setPositive() {
-	mIsNegative = false;
-}
-
-// Removes leading, integer zeros
-bool bigNum::removeLeadingZeros() { // Updates mSize, mDigits
-	if (mSize == 0) return false;
-
-	sizeType end = mSize - 1;
-	while (end > mIntegerStart && mDigits[end] == 0) end--;
-	if (end != (mSize - 1)) {
-		sizeType newSize = end + 1;
-		digitType *newData = new digitType[newSize];
-		for (sizeType i = 0; i < newSize; i++)
-			newData[i] = mDigits[i];
-		delete[] mDigits;
-		mDigits = newData;
-		mSize = newSize;
-		return true;
-	}
-
-	return false;
-}
-
-// Removes trailing, fractional zeros
-bool bigNum::removeTrailingZeros() { // Updates mSize, mDigits, mIntegerStart
-	if (mSize == 0) return false;
-
-	sizeType start = 0;
-	while (start < mIntegerStart && (mRepetendSize > 0 ? (start < mRepetendStart) : 1) && mDigits[start] == 0) start++;
-	if (start != 0) {
-		sizeType newSize = mSize - start;
-		digitType *newData = new digitType[newSize];
-		for (sizeType i = 0, j = start; i < newSize; i++, j++)
-			newData[i] = mDigits[j];
-		delete[] mDigits;
-		mDigits = newData;
-		mSize = newSize;
-		mIntegerStart -= start;
-		if (mRepetendSize > 0) mRepetendStart -= start;
-		return true;
-	}
-
-	return false;
-}
-
-// New size must be > the number of fraction digits + 1
-bool bigNum::resize(sizeType newSize) {
-	if (newSize <= (mIntegerStart + 1)) return false;
-
-	sizeType oldSize = mSize;
-	digitType *newData = new digitType[newSize];
-
-	// Copy the digits over, starting from the LSB
-	sizeType i = 0;
-	for (; i < oldSize; i++)
-		newData[i] = mDigits[i];
-
-	// Pad zeros beyond the MSB
-	for (; i < newSize; i++)
-		newData[i] = 0;
-
-	delete[] mDigits;
-	mDigits = newData;
-	mSize = newSize;
-	updateState();
-
-	return true;
-}
-
-// Equivalent to multiplying the number by 10^shiftAmt
-// Returns true if digits were added, false otherwise
-bool bigNum::shiftLeft(sizeType shiftAmt) {		// updates mIntegerStart, mSize, mDigits, mNumDigits
-	if (shiftAmt <= 0) return false;
-
-	bool returnVal = false;
-
-	// shift the position of the decimal point first
-	if (mIntegerStart > 0) {
-		sizeType radixShiftAmt = (mIntegerStart > shiftAmt) ? shiftAmt : mIntegerStart;
-		mIntegerStart -= radixShiftAmt;
-		shiftAmt -= radixShiftAmt;
-	}
-
-	// add additional digits
-	if (shiftAmt > 0) {
-		sizeType numNewDigits = shiftAmt + mRepetendSize;
-		sizeType newSize = mSize + numNewDigits;
-		digitType *newData = new digitType[newSize];
-		sizeType i = 0;
-
-		// add new digits
-		if (mRepetendSize > 0) {	// extend the repetend
-			for (sizeType r = mRepetendStart + (mRepetendSize-1); i < numNewDigits; i++) {
-				sizeType index = (numNewDigits-1) - i;
-				newData[index] = mDigits[r];
-				if (r == mRepetendStart) r += mRepetendSize-1;
-				else r--;
-			}
-		} else						// pad zeros
-			for (; i < numNewDigits; i++)
-				newData[i] = 0;
-
-		// copy old digits
-		for (sizeType j = 0; j < mSize; j++, i++)
-			newData[i] = mDigits[j];
-
-		// update members
-		delete[] mDigits;
-		mDigits = newData;
-		mSize = newSize;
-		if (mRepetendSize > 0) {	// additional fraction digits were added for the repetend
-			mRepetendStart = 0;
-			mIntegerStart += mRepetendSize;
-		}
-
-		returnVal = true;
-	} else if (mRepetendSize > 0 && (mRepetendStart + mRepetendSize) > mIntegerStart) {	
-
-		// repetend contains integer digits, adjust so it is entirely fractional
-
-		// adjust the beginning of the repetend
-		while (mRepetendStart > 0 && (mRepetendStart + mRepetendSize) > mIntegerStart) mRepetendStart--;
-
-		// add additional digits
-		if ((mRepetendStart + mRepetendSize) > mIntegerStart) {
-			sizeType numNewDigits = (mRepetendStart + mRepetendSize) - mIntegerStart;
-			sizeType newSize = mSize + numNewDigits;
-			digitType *newData = new digitType[newSize];
-			sizeType i = 0;
-
-			// add new digits
-			for (sizeType r = mRepetendStart + (mRepetendSize-1); i < numNewDigits; i++) {
-				sizeType index = (numNewDigits-1) - i;
-				newData[index] = mDigits[r];
-				if (r == mRepetendStart) r += mRepetendSize-1;
-				else r--;
-			}
-
-			// copy old digits
-			for (sizeType j = 0; j < mSize; j++, i++)
-				newData[i] = mDigits[j];
-
-			// update members
-			delete[] mDigits;
-			mDigits = newData;
-			mSize = newSize;
-			mRepetendStart = 0;
-			mIntegerStart += numNewDigits;
-			
-			returnVal = true;
-		}
-	}
-
-	updateState();
-
-	return returnVal;
-}
-
-// Equivalent to dividing the number by 10^shiftAmt
-// Returns true if digits were added, false otherwise
-bool bigNum::shiftRight(sizeType shiftAmt) {
-	if (shiftAmt == 0) return false;
-
-	// shift the radix point
-	mIntegerStart += shiftAmt;
-
-	// add additional zeros
-	if (mIntegerStart >= mSize) {
-		sizeType numZeros = mIntegerStart - mSize + 1;
-		sizeType newSize = mSize + numZeros;
-		digitType *newData = new digitType[newSize];
-
-		// Copy the digits over, starting from the LSB
-		sizeType i = 0;
-		for (; i < mSize; i++)
-			newData[i] = mDigits[i];
-
-		// Pad the zeros beyond the MSB
-		for (; i < newSize; i++)
-			newData[i] = 0;
-
-		delete[] mDigits;
-		mDigits = newData;
-		mSize = newSize;
-	}
-
-	updateState();
-	
-	return true;
-}
-
-bool bigNum::padMSB(sizeType numZeros) {	// every bigNum will have at least one integer digit; no change to mIntegerStart
-	if (numZeros <= 0) return false;
-
-	sizeType newSize = mSize + numZeros;
-	digitType *newData = new digitType[newSize];
-	sizeType i = 0;
-
-	// Copy the digits over, starting from the LSB
-	for (; i < mSize; i++)
-		newData[i] = mDigits[i];
-
-	// Pad the zeros beyond the MSB
-	for (; i < newSize; i++)
-		newData[i] = 0;
-
-	delete[] mDigits;
-	mDigits = newData;
-	mSize = newSize;
-
-	return true;
-}
-
-// Returns true if digits were added, false otherwise
-bool bigNum::padLSB(sizeType numDigits, bool digitsAreFrac /* = false */) {
-	if (numDigits <= 0) return false;						
-
-	sizeType newSize = mSize + numDigits;
-	digitType *newData = new digitType[newSize];
-	sizeType i = 0;
-
-	// add new digits
-	if (mRepetendSize > 0) {	// Extend the repetend
-		for (sizeType r = mRepetendStart + (mRepetendSize-1); i < numDigits; i++) {
-			sizeType index = (numDigits-1) - i;
-			newData[index] = mDigits[r];
-			if (r == mRepetendStart) r += mRepetendSize-1;
-			else r--;
-		}
-	} else						// Pad zeros
-		for (; i < numDigits; i++)
-			newData[i] = 0;
-
-	// copy old digits
-	for (sizeType j = 0; j < mSize; i++, j++)
-		newData[i] = mDigits[j];
-
-	// update members
-	delete[] mDigits;
-	mDigits = newData;
-	mSize = newSize;
-	if (mRepetendSize > 0) mRepetendStart += numDigits;
-	if (mIntegerStart > 0 || digitsAreFrac) mIntegerStart += numDigits;
-
-	updateState();
-
-	return true;
-}
-
-/* Default constructor */
-bigNum::bigNum(sizeType length /* = 50 */) {
-	if (length < 1) length = 50;
-	mSize = length;
-	mNumDigits = 1;
-	mIntegerStart = 0;
-	mRepetendStart = 0;
-	mRepetendSize = 0;
-	mIsNegative = false;
-	mIsInteger = true;
-	mIsZero = true;
-	mDigits = new digitType[length];
-	for (sizeType d = 0; d < length; d++)
-		mDigits[d] = 0;
-}
-
-bigNum::bigNum(std::string number) {
-	if (number.length() == 0)
-		throw std::length_error("Bignum cannot be constructed with no digits");
-
-	// Check if the number is negative
-	if (number[0] == '-') {
-		mIsNegative = true;
-		number.erase(0, 1);
-	} else mIsNegative = false;
-
-	// Check if the number contains a fractional part
-	mIntegerStart = 0;
-	mIsInteger = true;
-	size_t i = 0;
-	for (; i < number.length(); i++) {
-		if (number[i] == '.' || number[i] == ',') {
-			number.erase(i, 1);
-			mIntegerStart = number.length() - i;
-			if (i == 0) number.insert(number.begin(), '0');		// number was entered with no integer digits, add a zero in the one's place
-			break;
-		}
-	}
-
-	// Check if the number is an integer
-	for (; i < number.length(); i++) {
-		if (number[i] > '0' && number[i] <= '9') {
-			mIsInteger = false;
-			break;
-		}
-	}
-
-	// Read in the digits
-	if (number.length() == 0) throw std::length_error("Bignum cannot be constructed with no digits");
-	mSize = number.length();
-	mDigits = new digitType[mSize];
-	for (sizeType d = 0; d < number.length(); d++) {
-		if (number[d] < '0' || number[d] > '9')
-			throw std::invalid_argument("Number contains an illegal character");
-		mDigits[d] = number[(mSize - 1) - d] - '0';		// digits are stored little-endian
-	}
-
-	// Update state variables
-	updateState();
-	mRepetendStart = 0;
-	mRepetendSize = 0;
-}
-
-/* Copy constructor */
-bigNum::bigNum(const bigNum &rhs) {
-	mSize = rhs.mSize;
-	mNumDigits = rhs.mNumDigits;
-	mIntegerStart = rhs.mIntegerStart;
-	mRepetendStart = rhs.mRepetendStart;
-	mRepetendSize = rhs.mRepetendSize;
-	mIsNegative = rhs.mIsNegative;
-	mIsInteger = rhs.mIsInteger;
-	mIsZero = rhs.mIsZero;
-	mDigits = new digitType[rhs.mSize];
-	for (sizeType d = 0; d < rhs.mSize; d++)
-		mDigits[d] = rhs.mDigits[d];
-}
-
-/* Copy assignment operator */
-bigNum& bigNum::operator=(const bigNum& rhs) {
-	if (this != &rhs) {				// check that this is not a self-assignment
-		if (rhs.mSize != mSize) {	// check if a new size is needed
-			delete[] mDigits;
-			mSize = rhs.mSize;
-			mDigits = new digitType[rhs.mSize];
-		}
-		mNumDigits = rhs.mNumDigits;
-		mIntegerStart = rhs.mIntegerStart;
-		mRepetendStart = rhs.mRepetendStart;
-		mRepetendSize = rhs.mRepetendSize;
-		mIsNegative = rhs.mIsNegative;
-		mIsInteger = rhs.mIsInteger;
-		mIsZero = rhs.mIsZero;
-		for (sizeType d = 0; d < rhs.mSize; d++)
-			mDigits[d] = rhs.mDigits[d];
-	}
+	for (index_type i = 0; i < other.size; i++)
+		digits[i] = other.digits[i];
+	lsb = other.lsb;
+	msb = other.msb;
+	isPositive = other.isPositive;
 	return *this;
 }
-
-/* Destructor */
-bigNum::~bigNum() {
-	delete[] mDigits;
+bigNum::num_type& bigNum::num_type::operator=(num_type &&other) noexcept {
+	if (this == &other) return *this;
+	delete[] digits;
+	digits = other.digits;
+	size = other.size;
+	lsb = other.lsb;
+	msb = other.msb;
+	isPositive = other.isPositive;
+	other.digits = nullptr;
+	return *this;
+}
+bigNum::num_type::~num_type() {
+	delete[] digits;
 }
 
-sizeType bigNum::numDigits() const {
-	return mNumDigits;
+// Utility
+bigNum::digit_type bigNum::num_type::operator[](index_type i) const{
+	if (i > size || i < 0 || i > (msb - lsb)) throw std::range_error("Index out of range");
+	return digits[msb-i];
+}
+bigNum::digit_type& bigNum::num_type::operator[](index_type i) {
+	if (i > size || i < 0 || i >(msb - lsb)) throw std::range_error("Index out of range");
+	return digits[msb-i];
+}
+bool bigNum::num_type::toInteger(index_type &out) const {
+	index_type numDigits = msb - lsb + 1;
+	constexpr index_type maxNumDigits = std::numeric_limits<index_type>::digits10;
+	if (numDigits <= maxNumDigits) {
+		out = 0;
+		for (index_type i = lsb, e = 1; i <= msb && i < size; i++, e *= 10)
+			out += e * digits[i];
+		if (!isPositive) out = -out;
+		return true;
+	}
+	return false;
+}
+void bigNum::num_type::clear() {
+	for (index_type i = 0; i < size; i++)
+		digits[i] = 0;
+	lsb = 0;
+	msb = 0;
+	isPositive = true;
+}
+void bigNum::num_type::resize(index_type sz) {
+	if (sz < 0 || sz < size) return;	// can only resize to a larger size
+	if (sz > mMaxDigits) throw std::overflow_error("Overflow in resize");
+	size_type newSize = static_cast<size_type>(sz);
+	digit_type *newDigits = new digit_type[newSize]();
+	for (index_type i = 0; i < size && i < newSize; i++)
+		newDigits[i] = digits[i];
+	delete[] digits;
+	size = newSize;
+	digits = newDigits;
 }
 
-sizeType bigNum::repetendPeriod() const {
-	return mRepetendSize;
-}
+// Arithmetic
+bigNum::index_type bigNum::num_type::add(const num_type &rhs, index_type rhsShift) {
 
-bool bigNum::isNegative() const {
-	return mIsNegative;
-}
+	// Calculate the number of digits needed for the sum
+	index_type numDigits = msb - lsb + 1;						// # of integer digits
+	index_type rhsNumDigits = rhs.msb - rhs.lsb + 1 + rhsShift;	// # of integer digits
+	if (rhsNumDigits < 1) rhsNumDigits = 1;
+	index_type sumNumDigits = (numDigits > rhsNumDigits ? numDigits : rhsNumDigits);
+	if (rhsShift < 0) sumNumDigits += -rhsShift;	// if rhs is shifted right, sum has fraction digits
+	if (sumNumDigits+1 > mMaxDigits) throw std::overflow_error("Overflow in add");
 
-bool bigNum::isInteger() const {
-	return mIsInteger;
-}
+	// If the rhs is shifted to the right or has a greater size, allocate new memory for the sum
+	digit_type *sum = digits;
+	size_type sumSize = (sumNumDigits+1 > size) ? static_cast<size_type>(sumNumDigits)+1 : size;
+	if (rhsShift < 0 || sumSize > size)
+		sum = new digit_type[sumSize]();
 
-void bigNum::print(sizeType firstNDigits /* = 0 */) const {
-	if (mSize == 0) {
-		std::cout << "No digits found\n";
-		return;
+	// Adjust the start index of the number with the larger lsb to account for the rhs shift
+	const num_type &lhs = *this;
+	index_type lhsStart = lhs.lsb - (rhsShift < 0 ? -rhsShift : 0);
+	index_type rhsStart = rhs.lsb - (rhsShift > 0 ? rhsShift : 0);
+
+	// Calculate the sum
+	index_type sumLSB = 0;
+	index_type sumMSB = sumNumDigits-1;
+	if (lhs.isPositive == rhs.isPositive) {
+		// Add the digits
+		digit_type carry = 0;
+		index_type i = sumLSB;
+		for (index_type l = lhsStart, r = rhsStart; i <= sumMSB; i++, l++, r++) {
+			digit_type left = (l < lhs.lsb || l > lhs.msb) ? 0 : lhs.digits[l];
+			digit_type right = (r < rhs.lsb || r > rhs.msb) ? 0 : rhs.digits[r];
+			sum[i] = left + right + carry;
+			if (sum[i] > 9) {
+				sum[i] -= 10;
+				carry = 1;
+			} else carry = 0;
+		}
+		if (carry) {	// addition resulted in an additional digit
+			sum[i] = carry;
+			sumMSB = i;
+		}
+	} else {
+		// Subtract the digits
+		for (index_type i = sumLSB, l = lhsStart; i <= sumMSB; i++, l++)
+			sum[i] = 9 - (l < lhs.lsb || l > lhs.msb ? 0 : lhs.digits[l]);
+		digit_type carry = 0;
+		for (index_type i = sumLSB, r = rhsStart; i <= sumMSB; i++, r++) {
+			sum[i] += (r < rhs.lsb || r > rhs.msb ? 0 : rhs.digits[r]) + carry;
+			if (sum[i] > 9) {
+				sum[i] -= 10;
+				carry = 1;
+			} else carry = 0;
+		}
+		if (carry) {	// result of subtraction is negative, |lhs| < |rhs|
+			isPositive = !isPositive;
+			// add back the carry to the least significand digit (end-around carry) to get the correct difference
+			index_type i = sumLSB;
+			while (carry && i <= sumMSB) {
+				sum[i] += carry;
+				if (sum[i] > 9) sum[i] -= 10;
+				else carry = 0;
+				i++;
+			}
+		} else {		// result of subtraction is positive, |lhs| >= |rhs|
+			for (index_type i = sumLSB; i <= sumMSB; i++)
+				sum[i] = 9 - sum[i];
+		}
 	}
 
-	if (firstNDigits == 0) firstNDigits = mNumDigits;	// no number of digits was specified, print all
-	else std::cout << "Displaying the first " << firstNDigits << " digits\n";
-	if (mIsNegative) std::cout << "-";
+	// Set the result
+	if (sum == digits) {	// no new data was was allocated
+		// clear any unchanged digits
+		index_type i = msb, j = lsb;
+		while (i > sumMSB) digits[i--] = 0;
+		while (j < sumLSB) digits[j++] = 0;
+	} else {				// new data was allocated
+		delete[] digits;
+		digits = sum;
+		size = sumSize;
+	}
+	while (sum[sumMSB] == 0 && sumMSB > sumLSB) sumMSB--;
+	lsb = sumLSB;
+	msb = sumMSB;
 
-	// Skip any leading zeros
-	sizeType end = mSize - 1;
-	while (end > mIntegerStart && mDigits[end] == 0) end--;
+	index_type lhsShift = 0;	// the change in the number's size as a result of the addition
+	sumNumDigits = sumMSB - sumLSB + 1;
+	lhsShift = sumNumDigits - numDigits;
 
-	sizeType index;
-	for (sizeType i = 0; i < firstNDigits; i++) {
-		index = end - i;
-		if (mRepetendSize > 0 && index == (mRepetendStart + mRepetendSize-1)) std::cout << "(";
-		std::cout << mDigits[index];
-		if (mRepetendSize > 0 && index == mRepetendStart) {
-			std::cout << ")";
+	return lhsShift;
+}
+bigNum::index_type bigNum::num_type::subtract(const num_type &rhs, index_type rhsShift) {
+	// Calculate the number of digits needed for the diff
+	index_type numDigits = msb - lsb + 1;						// # of integer digits
+	index_type rhsNumDigits = rhs.msb - rhs.lsb + 1 + rhsShift;	// # of integer digits
+	if (rhsNumDigits < 1) rhsNumDigits = 1;
+	index_type diffNumDigits = (numDigits > rhsNumDigits ? numDigits : rhsNumDigits);
+	if (rhsShift < 0) diffNumDigits += -rhsShift;	// if rhs is shifted right, diff has fraction digits
+	if (diffNumDigits+1 > mMaxDigits) throw std::overflow_error("Overflow in add");
+
+	// If the rhs is shifted to the right or has a greater size, allocate new memory for the diff
+	digit_type *diff = digits;
+	size_type diffSize = (diffNumDigits+1 > size) ? static_cast<size_type>(diffNumDigits)+1 : size;
+	if (rhsShift < 0 || diffSize > size)
+		diff = new digit_type[diffSize]();
+
+	// Adjust the start index of the number with the larger lsb to account for the rhs shift
+	const num_type &lhs = *this;
+	index_type lhsStart = lhs.lsb - (rhsShift < 0 ? -rhsShift : 0);
+	index_type rhsStart = rhs.lsb - (rhsShift > 0 ? rhsShift : 0);
+
+	// Calculate the difference
+	index_type diffLSB = 0;
+	index_type diffMSB = diffNumDigits-1;
+	if (lhs.isPositive == rhs.isPositive) {
+		// Subtract the digits
+		for (index_type i = diffLSB, l = lhsStart; i <= diffMSB; i++, l++)
+			diff[i] = 9 - (l < lhs.lsb || l > lhs.msb ? 0 : lhs.digits[l]);
+		digit_type carry = 0;
+		for (index_type i = diffLSB, r = rhsStart; i <= diffMSB; i++, r++) {
+			diff[i] += (r < rhs.lsb || r > rhs.msb ? 0 : rhs.digits[r]) + carry;
+			if (diff[i] > 9) {
+				diff[i] -= 10;
+				carry = 1;
+			} else carry = 0;
+		}
+		if (carry) {	// result of subtraction is negative, |lhs| < |rhs|
+			isPositive = !isPositive;
+			// add back the carry to the least significand digit (end-around carry) to get the correct difference
+			index_type i = diffLSB;
+			while (carry && i <= diffMSB) {
+				diff[i] += carry;
+				if (diff[i] > 9) diff[i] -= 10;
+				else carry = 0;
+				i++;
+			}
+		} else {		// result of subtraction is positive, |lhs| >= |rhs|
+			for (index_type i = diffLSB; i <= diffMSB; i++)
+				diff[i] = 9 - diff[i];
+		}
+		
+	} else {
+		// Add the digits
+		digit_type carry = 0;
+		index_type i = diffLSB;
+		for (index_type l = lhsStart, r = rhsStart; i <= diffMSB; i++, l++, r++) {
+			digit_type left = (l < lhs.lsb || l > lhs.msb) ? 0 : lhs.digits[l];
+			digit_type right = (r < rhs.lsb || r > rhs.msb) ? 0 : rhs.digits[r];
+			diff[i] = left + right + carry;
+			if (diff[i] > 9) {
+				diff[i] -= 10;
+				carry = 1;
+			} else carry = 0;
+		}
+		if (carry) {	// addition resulted in an additional digit
+			diff[i] = carry;
+			diffMSB = i;
+		}
+	}
+
+	// Set the result
+	if (diff == digits) {	// no new data was was allocated
+		// clear any unchanged digits
+		index_type i = msb, j = lsb;
+		while (i > diffMSB) digits[i--] = 0;
+		while (j < diffLSB) digits[j++] = 0;
+	} else {				// new data was allocated
+		delete[] digits;
+		digits = diff;
+		size = diffSize;
+	}
+	while (diff[diffMSB] == 0 && diffMSB > diffLSB) diffMSB--;
+	lsb = diffLSB;
+	msb = diffMSB;
+
+	index_type lhsShift = 0;	// the change in the number's size as a result of the subtraction
+	diffNumDigits = diffMSB - diffLSB + 1;
+	lhsShift = diffNumDigits - numDigits;
+
+	return lhsShift;
+}
+void bigNum::num_type::longMultiply(const num_type &rhs) {
+	
+	// Allocate space for the product
+	index_type numDigits = msb - lsb + 1;
+	index_type rhsNumDigits = rhs.msb - rhs.lsb + 1;
+	index_type prodNumDigits = numDigits + rhsNumDigits;
+	if (prodNumDigits > mMaxDigits) throw std::overflow_error("Overflow in longMultiply");
+	size_type prodSize = (prodNumDigits > size) ? static_cast<size_type>(prodNumDigits) : size;
+	digit_type *prod = new digit_type[prodSize]();
+
+	// Calculate the product
+	index_type sum = 0;
+	for (index_type p = 0; p < prodSize-1; p++) {	// for each digit of the product
+		for (index_type r = (p < size) ? 0 : p-size+1; r <= p && r < rhs.size; r++)
+			sum += digits[p-r] * rhs.digits[r];
+		prod[p] = sum % 10;
+		sum /= 10;
+	}
+	prod[prodSize-1] = sum % 10;
+
+	// Set the result
+	delete[] digits;
+	digits = prod;
+	size = prodSize;
+	lsb = 0;
+	msb = prodNumDigits-1;
+	while (digits[msb] == 0 && msb > lsb) msb--;
+	isPositive = (isPositive == rhs.isPositive);
+}
+bigNum::index_type bigNum::num_type::divideDigits(div_mode mode, num_type &rhs, digit_type *quotient, index_type quotNumDigits, index_type quotNumIntegerDigits) {
+	// Divide this by rhs and store the result in quotient
+	// Return the index of the quotient's least significant digit set
+	num_type &lhs = *this;
+
+	// Simpler algorithm when the divisor is one digit
+	index_type rhsNumDigits = rhs.msb - rhs.lsb + 1;
+	if (rhsNumDigits == 1) {
+		digit_type d = rhs.digits[lsb];
+		if (d == 0) throw std::invalid_argument("Division by zero");
+		index_type q = quotNumDigits-1;	// quotient index
+		index_type p = 0;				// count number of precise digits
+		digit_type r = 0, qDigit = 0;
+		for (index_type i = 0, j = msb; i < quotNumDigits && q >= 0; i++, j--, q--) {
+			digit_type div = 10*r + (j >= lsb ? digits[j] : 0);	// 2 digit partial dividend
+			qDigit = div / d;
+			r = div % d;
+			quotient[q] = qDigit;
+
+			// Check for termination
+			if (mode == div_mode::default) {
+				if (i >= quotNumIntegerDigits) {	// start counting precision after integer digits
+					// Check for a zero remainder
+					if (r == 0) {
+						if (qDigit == 0) q++;
+						break;
+					}
+					if (p > 0 || qDigit || quotNumIntegerDigits > 0) p++;
+					if (p >= 9) break;
+				}
+			} else if (mode == div_mode::precision) {
+				if (p > 0 || qDigit) p++;
+				if (p >= mPrecision) break;
+			}
+		}
+		return q;
+	}
+
+	// Helper function for single digit multiplication
+	auto multiplyByDigit = [](num_type &num, digit_type d) {
+		if (d == 1) return;
+		digit_type carry = 0;
+		for (index_type i = num.lsb; i <= num.msb; i++) {
+			num.digits[i] = num.digits[i] * d + carry;
+			carry = num.digits[i] / 10;
+			num.digits[i] %= 10;
+		}
+		if (carry) {
+			if (num.msb+1 >= num.size) num.resize(static_cast<index_type>(num.size)+1);
+			num.digits[num.msb+1] = carry;
+			num.msb++;
+		}
+	};
+
+	// Normalize lhs and rhs so that the first digit of rhs is >= 5 and lhs has an additional digit
+	digit_type d = 10 / (rhs.digits[rhs.msb] + 1);	// normalization factor
+	index_type lMSB = lhs.msb;
+	multiplyByDigit(lhs, d);
+	multiplyByDigit(rhs, d);
+	if (lhs.msb == lMSB) {	// add a zero to the lhs
+		if (lhs.msb+1 >= lhs.size) lhs.resize(static_cast<index_type>(lhs.size)+1);
+		lhs.digits[lhs.msb+1] = 0;
+		lhs.msb++;
+	}
+
+	// Allocate and initialize the partial dividend
+	index_type n = rhsNumDigits + 1;	// size of partial dividend
+	if (n > mMaxDigits) throw std::overflow_error("Overflow in longDivide");
+	digit_type *div = new digit_type[static_cast<size_type>(n)]();
+	index_type l = lhs.msb;
+	for (index_type i = n-1; i >= 0 && l >= lhs.lsb; i--, l--)
+		div[i] = lhs.digits[l];
+
+	// Cache the products of the multiplication of the divisor by each digit
+	num_type *products[10]{};
+
+	// Divide u/v according to div_mode:
+	// 		DEFAULT: divide to get an integer quotient then divide to the default decimal precision, stopping if the quotient terminates or repeats
+	//		PRECISION: divide to the precision specified in mPrecision
+	//		EUCLID: divide to get an integer quotient
+	digit_type *u = lhs.digits;
+	digit_type *v = rhs.digits;
+	index_type p = 0;				// count number of precise digits
+	index_type q = quotNumDigits-1;	// quotient index
+
+	for (index_type i = 0; i < quotNumDigits && q >= 0; i++, q--) {
+		// Divide the partial dividend (div) by the divisor (v) to get one digit (qHat) of the quotient
+
+		// Calculate qHat
+		digit_type qHat = (10*div[n-1]+div[n-2]) / v[rhs.msb];
+		digit_type rHat = (10*div[n-1]+div[n-2]) % v[rhs.msb];
+		while (qHat >= 10 || qHat*v[rhs.msb-1] >(10*rHat+div[n-3])) {
+			qHat--;
+			rHat += v[rhs.msb];
+			if (rHat >= 10) break;
+		}
+
+		// Multiply v by qHat and subtract from the partial dividend
+		if (!products[qHat]) {
+			products[qHat] = new num_type(rhs);
+			multiplyByDigit(*products[qHat], qHat);
+		}
+		num_type &product = *products[qHat];
+		digit_type carry = 0;
+		for (index_type j = 0, k = product.lsb; j < n; j++, k++) {
+			div[j] = (9 - div[j]) + product.digits[k] + carry;
+			if (div[j] > 9) {
+				carry = 1;
+				div[j] -= 10;
+			} else carry = 0;
+		}
+		if (carry) {	// result is negative - q was 1 too large
+			qHat--;
+			// "End-around carry" - add the carry to the LSB to get the difference (a negative value)
+			for (index_type j = 0; j < n; j++) {
+				div[j] += carry;
+				if (div[j] > 9) div[j] -= 10;
+				else break;
+			}
+			// Add back v to get the correct partial quotient
+			carry = 0;
+			for (index_type j = 0, k = rhs.lsb; j < n-1; j++, k++) {
+				div[j] += (9 - v[k]) + carry;
+				if (div[j] > 9) {
+					carry = 1;
+					div[j] -= 10;
+				} else carry = 0;
+			}
+			div[n-1] = 9;	// carry will always be 0 for the last digit
+		}
+		for (index_type j = 0; j < n; j++)
+			div[j] = 9 - div[j];
+
+		// Set this digit of the quotient
+		quotient[q] = qHat;
+
+		// Check for termination
+		if (mode == div_mode::default) {
+			if (i >= quotNumIntegerDigits) {	// start counting precision after integer digits
+				// Check for a zero remainder
+				bool zeroRem = true;
+				index_type j = 0;
+				while (zeroRem && j < n) if (div[j++] != 0) zeroRem = false;
+				if (zeroRem) { if (qHat == 0) q++; break; }
+				if (p > 0 || qHat || quotNumIntegerDigits > 0) p++;
+				if (p >= mDefaultDecimalPrecision) break;
+			}
+		} else if (mode == div_mode::precision) {
+			if (p > 0 || qHat) p++;
+			if (p >= mPrecision) break;
+		}
+
+		// Shift the partial dividend
+		for (index_type j = n-1; j > 0; j--)
+			div[j] = div[j-1];
+		div[0] = (l >= lhs.lsb) ? u[l--] : 0;
+	}
+
+	// Free memory for the partial dividend and cached products
+	delete[] div;
+	for (index_type i = 0; i < 10; i++) delete products[i];
+
+	return q;
+}
+bigNum::index_type bigNum::num_type::longDivide(div_mode mode, num_type rhs, index_type rhsShift) {
+
+	// Check for division by zero and bad precision
+	index_type z = rhs.msb;
+	while (rhs.digits[z] == 0 && z > rhs.lsb) z--;
+	if (z == rhs.lsb && rhs.digits[z] == 0) throw std::invalid_argument("Division by zero");
+	if (mode == div_mode::precision && mPrecision == 0) throw std::invalid_argument("Invalid precision in longDivide");
+
+	// Return val, the shift required to make the quotient an integer
+	index_type lhsShift = 0;
+	num_type &lhs = *this;
+
+	// Calculate the number of integer digits in the quotient (using rhsShift)
+	index_type lhsNumDigits = lhs.msb - lhs.lsb + 1;
+	index_type rhsNumDigits = rhs.msb - rhs.lsb + 1;
+	index_type quotNumIntegerDigits = lhsNumDigits - (rhsNumDigits + rhsShift) + 1;
+	if (quotNumIntegerDigits < 0) quotNumIntegerDigits = 0;	// lhs < rhs
+
+	// Add/remove additional digits of precision
+	index_type quotNumDigits = quotNumIntegerDigits;
+	if (mode == div_mode::default) quotNumDigits += (mDefaultDecimalPrecision + 1);
+	else if (mode == div_mode::precision) quotNumDigits = static_cast<index_type>(mPrecision) + 1;
+	if (quotNumDigits > mMaxDigits) throw std::overflow_error("Overflow in longDivide");
+
+	// Allocate memory for the quotient
+	size_type quotSize = (quotNumDigits > size) ? static_cast<size_type>(quotNumDigits) : size;
+	digit_type *quotient = new digit_type[quotSize]();
+
+	// Divide rhs into lhs and store the result in quotient
+	index_type qLSB = lhs.divideDigits(mode, rhs, quotient, quotNumDigits, quotNumIntegerDigits);
+
+	// Set the result
+	if (qLSB < 0) qLSB = 0;
+	index_type numDigitsSet = quotNumDigits - qLSB;
+	index_type numIntDigits = lhsNumDigits - rhsNumDigits + 1;	// ignoring rhsShift
+	lhsShift = numDigitsSet - numIntDigits;
+	switch (mode) {
+		case div_mode::euclid:
+			if (quotNumIntegerDigits <= 0) lhsShift = 0;	
+			[[fallthrough]];
+		case div_mode::default:
+		case div_mode::precision:
+			delete[] digits;
+			digits = quotient;
+			size = quotSize;
+			lsb = qLSB;
+			msb = quotNumDigits ? (quotNumDigits-1) : 0;
+			isPositive = (isPositive == rhs.isPositive);
+
+			// Shift lsb to index 0
+			while (digits[msb] == 0 && msb > lsb) msb--;
+			if (lsb > 0) {
+				index_type i = 0;
+				for (index_type j = lsb; i < size && j <= msb && j < size; i++, j++)
+					digits[i] = digits[j];
+				while (i <= msb) digits[i++] = 0;
+				msb -= lsb;
+				lsb = 0;
+			}
+			break;
+		default:
+			delete[] quotient;
+			lhsShift = 0;
+	}
+	
+	return lhsShift;
+}
+
+
+/* ------------------------------------------------------ */
+/*					   Constructors                       */
+/* -------------------------------------------------------*/
+
+bigNum::bigNum():
+	mSignificand(), mExponent(), mRepLSB(-1), mRepMSB(-1)
+{ }
+bigNum::bigNum(size_type sigSize, size_type expSize):
+	mSignificand(sigSize), mExponent(expSize), mRepLSB(-1), mRepMSB(-1)
+{ }
+bigNum::bigNum(std::string num):
+	mSignificand(), mExponent(), mRepLSB(-1), mRepMSB(-1)
+{
+	if (num.length() == 0) return;	// zero-init with an empty string
+
+	// Check if the number is negative
+	if (num[0] == '-') {
+		mSignificand.isPositive = false;
+		num.erase(0, 1);
+	}
+
+	// Check if the number contains a decimal point
+	size_t tenthsPlaceIndex = num.length();		// index of first fraction digit
+	for (size_t i = 0; i < num.length(); i++) {
+		if (num[i] == '.' || num[i] == ',') {
+			tenthsPlaceIndex = i;
+			num.erase(i, 1);
 			break;
 		}
-		if (index == mIntegerStart && i != (firstNDigits - 1)) std::cout << ".";
-
 	}
-	std::cout << "\n";
-}
 
-void bigNum::printAll() const {
-	if (mSize == 0) {
-		std::cout << "No digits found\n";
+	// Get the number of digits in the string, ignoring leading and trailing zeros
+	if (num.length() == 0) throw std::invalid_argument("BigNum cannot be constructed with no digits");
+	size_t msb = 0, lsb = num.length()-1;
+	while (num[msb] == '0' && msb < num.length()-1) msb++;
+	while (num[lsb] == '0' && lsb > msb) lsb--;
+	size_t numDigits = lsb - msb + 1;
+	if (numDigits > mMaxDigits) throw std::length_error("Overflow error in bigNum(std::string)");
+
+	// Set the significand
+	size_type numSigDigits = static_cast<size_type>(numDigits);
+	if (numSigDigits > mSignificand.size) mSignificand.resize(numSigDigits);
+	index_type i = 0;
+	for (size_t j = 0; j < numDigits && i < mSignificand.size; j++, i++) {
+		char c = num[lsb-j];
+		if (c < '0' || c > '9') throw std::invalid_argument("Number contains an invalid character");
+		mSignificand.digits[i] = c - '0';	// digits are stored little-endian
+	}
+	mSignificand.lsb = 0;
+	mSignificand.msb = i-1;
+
+	// Check if the number is zero
+	if (mSignificand.lsb == mSignificand.msb && mSignificand.digits[mSignificand.lsb] == 0) {
+		mSignificand.isPositive = true;
 		return;
 	}
-	if (mIsNegative) std::cout << "-";
-	sizeType index;
-	for (sizeType i = 0; i < mSize; i++) {
-		index = mSize - 1 - i;
-		if (mRepetendSize > 0 && index == (mRepetendStart + mRepetendSize-1)) std::cout << "(";
-		std::cout << mDigits[index];
-		if (mRepetendSize > 0 && index == mRepetendStart) std::cout << ")";
-		if (index == mIntegerStart && i != (mSize - 1)) std::cout << ".";
+
+	// Get the value of the exponent
+	size_t exp = 0;
+	if ((lsb + 1) <= tenthsPlaceIndex) {
+		exp = tenthsPlaceIndex - (lsb + 1);
+		mExponent.isPositive = true;
+	} else {
+		exp = (lsb + 1) - tenthsPlaceIndex;
+		mExponent.isPositive = false;
 	}
-	std::cout << "\nmSize: " << mSize;
-	std::cout << "\nmNumDigits: " << mNumDigits;
-	std::cout << "\nmIntegerStart: " << mIntegerStart;
-	std::cout << "\nmRepetendStart: " << mRepetendStart;
-	std::cout << "\nmRepetendSize: " << mRepetendSize;
-	std::cout << "\nmIsNegative: " << mIsNegative;
-	std::cout << "\nmIsInteger: " << mIsInteger;
-	std::cout << "\nmIsZero: " << mIsZero;
-	std::cout << "\n";
+
+	// Set the exponent
+	size_type numExpDigits = (exp == 0) ? 1 : static_cast<size_type>(std::log10(exp)) + 1;
+	if (numExpDigits > mExponent.size) mExponent.resize(numExpDigits);
+	i = 0;
+	do {
+		mExponent.digits[i++] = exp % 10;
+		exp /= 10;
+	} while (exp != 0 && i < mExponent.size);
+	mExponent.lsb = 0;
+	mExponent.msb = i-1;
 }
 
-// Indexed from left to right, i.e. the most significant digit is index 0
-digitType bigNum::operator[](sizeType d) const {
-	if (d < 0 || d >= mSize)
-		throw std::range_error("Index out of range");
-	return mDigits[mSize-1-d];
+/* ------------------------------------------------------ */
+/*                       Utility                          */
+/* -------------------------------------------------------*/
+
+void bigNum::printFloat() const {
+	if (mSignificand.msb >= mSignificand.size || mSignificand.lsb < 0 || mExponent.msb >= mExponent.size || mExponent.lsb < 0) {
+		std::cerr << "No digits found\n";
+		return;
+	}
+
+	// Print the significand
+	if (!mSignificand.isPositive) std::cout << "-";
+	for (index_type i = mSignificand.msb; i >= mSignificand.lsb; i--) {
+		if (i == mRepMSB) std::cout << "(";
+		std::cout << mSignificand.digits[i];
+		if (i == mRepLSB) std::cout << ")";
+	}
+
+	// Print the exponent
+	std::cout << "e";
+	if (!mExponent.isPositive) std::cout << "-";
+	for (index_type i = mExponent.msb; i >= mExponent.lsb; i--)
+		std::cout << mExponent.digits[i];
 }
+void bigNum::print(index_type firstNDigits) const {
+	if (mSignificand.msb >= mSignificand.size || mSignificand.lsb < 0 || mExponent.msb >= mExponent.size || mExponent.lsb < 0) {
+		std::cerr << "No digits found\n";
+		return;
+	}
 
-// Indexed from left to right, i.e. the most significant digit is index 0
-digitType& bigNum::operator[](sizeType d) {
-	if (d < 0 || d >= mSize)
-		throw std::range_error("Index out of range");
-	return mDigits[mSize-1-d];
+	constexpr index_type maxExpPrintSize = 1'000;
+
+	// Get the value of the exponent, if it is too large, print in floating-point notation
+	index_type exp = 0;
+	if (!mExponent.toInteger(exp) || exp > maxExpPrintSize) {
+		printFloat();
+		return;
+	}
+
+	// Calculate the total number of digits to print
+	index_type numSigDigits = mSignificand.msb - mSignificand.lsb + 1;
+	index_type numLeftPaddedDigits = (exp < 0 && -exp >= numSigDigits) ? (-exp-numSigDigits+1) : 0;
+	index_type numRightPaddedDigits = (exp > 0) ? exp : 0;
+	index_type numDigits = numSigDigits + numLeftPaddedDigits + numRightPaddedDigits;
+
+	// Calculate the indexes of the decimal point and repetend position
+	index_type onesPlaceIndex = (exp > 0) ? /*numSigDigits*/numDigits-1 : (numSigDigits + exp - 1);
+	if (onesPlaceIndex < 0) onesPlaceIndex = 0;
+	index_type repSize = 0, repStart = -1, repEnd = -1;
+	if (mRepLSB >= 0) {
+		repSize = mRepMSB - mRepLSB + 1;
+		repStart = mSignificand.msb - mRepMSB + numLeftPaddedDigits;
+		if (repStart <= onesPlaceIndex)			// repetend must be right of the decimal point
+			repStart += (onesPlaceIndex-repStart+1);	
+		repEnd = repStart + repSize - 1;
+
+		// shift the repetend indexes to the left as much as possible
+		index_type i = mRepMSB+1, j = mRepLSB;
+		while (repStart-1 > onesPlaceIndex) {
+			if (i <= mSignificand.msb) {	// shift the repetend left if the digit in the significand left of the rep matches the rep's least significant digit
+				if (mSignificand.digits[i] == mSignificand.digits[j]) {
+					repStart--; repEnd--;
+					i++; j++;
+				} else break;
+			} else if (mSignificand.digits[j] == 0) {	// shift the repetend left if the rep ends in a 0 (since a 0 to the left will be added with scaling)
+				repStart--; repEnd--;
+				i++; j++;
+			} else break;
+		}
+
+		// check if additional digits need to be printed (the repetend must be entirely right of the radix)
+		if (repEnd >= numDigits) {
+			numRightPaddedDigits += (repEnd-numDigits+1);
+			numDigits += (repEnd-numDigits+1);
+		}
+	}
+
+	// Check if a specific # of digits was requested
+	if (firstNDigits > 0 && firstNDigits < numDigits) {
+		std::cout << "Displaying the first " << firstNDigits << " digit" << (firstNDigits > 1 ? "s\n" : "\n");
+		numDigits = firstNDigits;
+	} else firstNDigits = 0;
+
+	// Print the number
+	if (!mSignificand.isPositive) std::cout << "-";
+	for (index_type i = 0, s = mSignificand.msb, r = mRepMSB; i < numDigits; i++) {
+		if (i == repStart) std::cout << "(";
+
+		// Print the i'th digit of the number
+		if (exp >= 0) {
+			if (i < numSigDigits && s >= mSignificand.lsb)	// print digits of the significand
+				std::cout << mSignificand.digits[s--];			
+			else if (repSize > 0) {							// print extra digits from the repetend
+				std::cout << mSignificand.digits[r--];
+				if (r < mRepLSB) r = mRepMSB;
+			}
+			else std::cout << "0";							// print extra 0's from scaling
+		} else {
+			if (i < numLeftPaddedDigits)					// print extra digits from scaling
+				std::cout << "0";						
+			else if (s >= mRepLSB)							// print digits of the significand
+				std::cout << mSignificand.digits[s--];
+			else if (repSize > 0) {							// print extra digits from the repetend
+				std::cout << mSignificand.digits[r--];
+				if (r < mRepLSB) r = mRepMSB;
+			}
+		}
+
+		if (i == repEnd) { std::cout << ")"; break; }
+		if (i == onesPlaceIndex && i+1 < numDigits) std::cout << ".";
+	}
+
+	// Indicate that not all of the digits have been printed
+	if (firstNDigits > 0) std::cout << "...";
 }
+bool bigNum::integerDifference(const bigNum::num_type &lhs, const bigNum::num_type &rhs, index_type &out) {
 
-/* -------------------------------- */
-/*      Comparison Operators        */
-/* ---------------------------------*/
+	// Check if both numbers can be converted to an integer type
+	index_type lInt = 0, rInt = 0;
+	if (lhs.toInteger(lInt) && rhs.toInteger(rInt)) {
+		// Check for overflow/underflow first
+		constexpr index_type MAX = std::numeric_limits<index_type>::max();
+		constexpr index_type MIN = std::numeric_limits<index_type>::min();
+		if ((rInt < 0) && (lInt > MAX + rInt)) return false;	// overflow
+		if ((rInt > 0) && (lInt < MIN + rInt)) return false;	// underflow
+		out = lInt - rInt;
+		return true;
+	}
 
-// update with repetend
-bool bigNum::operator==(const bigNum &rhs) const {	// Test for equality ignores leading and trailing zeros
-	bigNum lhs = *this;
-
-	if (lhs.mIsZero && rhs.mIsZero) return true;
-	if (lhs.mIsNegative != rhs.mIsNegative) return false;
-	if (lhs.mIsInteger != rhs.mIsInteger) return false;
-	if (lhs.mNumDigits != rhs.mNumDigits) return false;
-
-	// Skip trailing zeros
-	sizeType lhsStartIndex = 0, rhsStartIndex = 0;
-	while (lhsStartIndex < lhs.mIntegerStart && lhs[lhsStartIndex] == 0) lhsStartIndex++;
-	while (rhsStartIndex < rhs.mIntegerStart && rhs[rhsStartIndex] == 0) rhsStartIndex++;
-	if ((lhs.mIntegerStart - lhsStartIndex) != (rhs.mIntegerStart - rhsStartIndex)) return false;	// make sure radix point is in the same place
-
-	for (sizeType i = lhsStartIndex, j = rhsStartIndex; i < lhs.mNumDigits; i++, j++)
-		if (lhs.mDigits[i] != rhs.mDigits[j]) return false;
-
+	// Calculate the difference digit by digit
+	num_type diff(lhs);
+	diff.subtract(rhs);
+	index_type diffInt = 0;
+	if (!diff.toInteger(diffInt)) return false;
+	out = diffInt;
 	return true;
 }
+void bigNum::shift(index_type shiftAmt) {
+	// add shiftAmt to mExponent
 
+	if (shiftAmt == 0) return;
+	bool shiftIsPositive = (shiftAmt > 0);
+	if (shiftAmt < 0) shiftAmt = -shiftAmt;
+	index_type numShiftDigits = static_cast<index_type>(std::log10(shiftAmt)) + 1;
+	if (mExponent.lsb+numShiftDigits+1 > mExponent.size)
+		mExponent.resize(mExponent.lsb+numShiftDigits+1);
+
+	if (mExponent.isPositive == shiftIsPositive) {
+		// add shiftAmt to mExponent
+		index_type i = mExponent.lsb;
+		digit_type carry = 0;
+		while ((carry || shiftAmt) && i < mExponent.size) {
+			if (i > mExponent.msb) mExponent.digits[i] = 0;
+			mExponent.digits[i] += (shiftAmt % 10) + carry;
+			if (mExponent.digits[i] > 9) {
+				mExponent.digits[i] -= 10;
+				carry = 1;
+			} else carry = 0;
+			shiftAmt /= 10;
+			i++;
+		}
+		if (i-1 > mExponent.msb) mExponent.msb = i-1;
+	} else {
+		// subtract shiftAmt from mExponent
+		index_type numExpDigits = mExponent.msb - mExponent.lsb + 1;
+		index_type numDigits = (numExpDigits > numShiftDigits) ? numExpDigits : numShiftDigits;
+		for (index_type i = mExponent.lsb, j = 0; j < numDigits && i < mExponent.size; i++, j++) {
+			if (i > mExponent.msb) mExponent.digits[i] = 0;
+			mExponent.digits[i] = 9 - mExponent.digits[i];
+		}
+		digit_type carry = 0;
+		for (index_type i = mExponent.lsb, j = 0; j < numDigits; i++, j++) {
+			mExponent.digits[i] += (shiftAmt % 10) + carry;
+			if (mExponent.digits[i] > 9) {
+				mExponent.digits[i] -= 10;
+				carry = 1;
+			} else carry = 0;
+			shiftAmt /= 10;
+		}
+		if (carry) {	// result of subtraction is negative
+			mExponent.isPositive = !mExponent.isPositive;
+			// add back the carry to the least significand digit (end-around carry) to get the correct difference
+			index_type i = mExponent.lsb;
+			while (i < mExponent.size) {
+				mExponent.digits[i] += carry;
+				if (mExponent.digits[i] > 9) mExponent.digits[i] -= 10;
+				else break;
+				i++;
+			}
+		} else {		// result of subtraction is positive
+			for (index_type i = mExponent.lsb, j = 0; j < numDigits; i++, j++)
+				mExponent.digits[i] = 9 - mExponent.digits[i];
+		}
+		mExponent.msb = mExponent.lsb + numDigits - 1;
+		while (mExponent.digits[mExponent.msb] == 0 && mExponent.msb > mExponent.lsb) mExponent.msb--;
+	}
+	if (mExponent.msb == mExponent.lsb && mExponent.digits[mExponent.lsb] == 0) mExponent.isPositive = true;	 // check for -zero
+}
+std::ostream& operator<<(std::ostream &out, const bigNum &num) {
+	num.print();
+	return out;
+}
+
+/* ------------------------------------------------------ */
+/*                      Comparison                        */
+/* -------------------------------------------------------*/
+
+bool bigNum::operator==(const bigNum &rhs) const {
+	const bigNum &lhs = *this;
+
+	index_type l = lhs.mSignificand.msb;
+	index_type r = rhs.mSignificand.msb;
+
+	// Check if either significand is zero and compare their signs
+	if (l >= lhs.mSignificand.size || lhs.mSignificand.lsb < 0 || r >= rhs.mSignificand.size || rhs.mSignificand.lsb < 0) {
+		std::cerr << "Error reading operands in operator==";
+		return false;
+	}
+	bool lIsZero = true;
+	for (; l >= lhs.mSignificand.lsb; l--)
+		if (lhs.mSignificand.digits[l] != 0) { lIsZero = false; break; }
+	if (l < lhs.mSignificand.lsb) l = lhs.mSignificand.lsb;
+	bool rIsZero = true;
+	for (; r >= rhs.mSignificand.lsb; r--)
+		if (rhs.mSignificand.digits[r] != 0) { rIsZero = false; break; }
+	if (r < rhs.mSignificand.lsb) r = rhs.mSignificand.lsb;
+	if (lIsZero && rIsZero) return true;
+	else if (lIsZero != rIsZero) return false;
+	else if (lhs.mSignificand.isPositive != rhs.mSignificand.isPositive) return false;
+
+	// Get the significand sizes ignoring any leading zeros
+	index_type lSigSize = l - lhs.mSignificand.lsb + 1;
+	index_type rSigSize = r - rhs.mSignificand.lsb + 1;
+
+	// Check if the numbers have different orders of magnitude
+	// They have the same order of magnitude if the difference of their exponents is the opposite of the difference of their significand lengths
+	index_type sigSizeDiff = rSigSize - lSigSize;
+	index_type expDiff = 0;
+	if (!integerDifference(lhs.mExponent, rhs.mExponent, expDiff)) return false;
+	if (sigSizeDiff != expDiff) return false;	// numbers have different orders of magnitude
+
+	// Check all significand digits
+	for (; l >= lhs.mSignificand.lsb && r >= rhs.mSignificand.lsb; l--, r--)
+		if (lhs.mSignificand.digits[l] != rhs.mSignificand.digits[r]) return false;
+	index_type lRep = lhs.mRepMSB;
+	index_type rRep = rhs.mRepMSB;
+	while (l >= lhs.mSignificand.lsb) {	// check the remaining lhs digits
+		digit_type rDigit = 0;
+		if (rRep >= 0) {
+			rDigit = rhs.mSignificand.digits[rRep];
+			if (--rRep < rhs.mRepLSB) rRep = rhs.mRepMSB;
+		}
+		if (lhs.mSignificand.digits[l] != rDigit) return false;
+		l--;
+	}
+	while (r >= rhs.mSignificand.lsb) {	// check the remaining rhs digits
+		digit_type lDigit = 0;
+		if (lRep >= 0) {
+			lDigit = lhs.mSignificand.digits[lRep];
+			if (--lRep < lhs.mRepLSB) lRep = lhs.mRepMSB;
+		}
+		if (rhs.mSignificand.digits[r] != lDigit) return false;
+		r--;
+	}
+
+	// Check if either number has a repetend
+	if (lhs.mRepLSB >= 0 || rhs.mRepLSB >= 0) {
+		if (lhs.mRepLSB >= 0 && rhs.mRepLSB < 0) {			// only lhs has a repetend
+			for (lRep = lhs.mRepMSB; lRep >= lhs.mRepLSB; lRep--)
+				if (lhs.mSignificand.digits[lRep] != 0) return false;
+		} else if (rhs.mRepLSB >= 0 && lhs.mRepLSB < 0) {	// only rhs has a repetend
+			for (rRep = rhs.mRepMSB; rRep >= rhs.mRepLSB; rRep--)
+				if (rhs.mSignificand.digits[rRep] != 0) return false;
+		} else {											// both have a repetend
+			index_type lRepSize = lhs.mRepMSB - lhs.mRepLSB + 1;
+			index_type rRepSize = rhs.mRepMSB - rhs.mRepLSB + 1;
+
+			// line up the repetends if the significands are different lengths
+			index_type lRepStart = lhs.mRepMSB, rRepStart = rhs.mRepMSB;
+			index_type lSigSize = lhs.mSignificand.msb - lhs.mSignificand.lsb + 1;
+			index_type rSigSize = rhs.mSignificand.msb - rhs.mSignificand.lsb + 1;
+			if (lSigSize > rSigSize) rRepStart -= (lSigSize-rSigSize) % rRepSize;
+			else if (rSigSize > lSigSize) lRepStart -= (rSigSize-lSigSize) % lRepSize;
+
+			// extend each number's repetend, the most extra digits you need to compare is the lcm(lRepSize, rRepSize)
+			index_type numExtraDigits = std::lcm(lRepSize, rRepSize);
+			lRep = lRepStart;
+			rRep = rRepStart;
+			for (index_type i = 0; i < numExtraDigits; i++) {
+				if (lhs.mSignificand.digits[lRep] != rhs.mSignificand.digits[rRep]) return false;
+				if (--lRep < lhs.mRepLSB) lRep = lhs.mRepMSB;
+				if (--rRep < rhs.mRepLSB) rRep = rhs.mRepMSB;
+			}
+		}
+	}
+	return true;
+}
+bool bigNum::operator<(const bigNum &rhs) const {
+	const bigNum &lhs = *this;
+
+	index_type l = lhs.mSignificand.msb;
+	index_type r = rhs.mSignificand.msb;
+
+	// Find the first non-zero digit of each significand and check if either is zero
+	if (l >= lhs.mSignificand.size || lhs.mSignificand.lsb < 0 || r >= rhs.mSignificand.size || rhs.mSignificand.lsb < 0) {
+		std::cerr << "Error reading operands in operator==";
+		return false;
+	}
+	bool lIsZero = true;
+	for (; l >= lhs.mSignificand.lsb; l--)
+		if (lhs.mSignificand.digits[l] != 0) { lIsZero = false; break; }
+	if (l < lhs.mSignificand.lsb) l = lhs.mSignificand.lsb;
+	bool rIsZero = true;
+	for (; r >= rhs.mSignificand.lsb; r--)
+		if (rhs.mSignificand.digits[r] != 0) { rIsZero = false; break; }
+	if (r < rhs.mSignificand.lsb) r = rhs.mSignificand.lsb;
+
+	// Compare signs
+	if (lIsZero && rIsZero) return false;
+	else if (lIsZero) return rhs.mSignificand.isPositive;	// (lhs is 0) true if rhs is positive
+	else if (rIsZero) return !lhs.mSignificand.isPositive;	// (rhs is 0) true if lhs is negative
+	else if (lhs.mSignificand.isPositive != rhs.mSignificand.isPositive)
+		return rhs.mSignificand.isPositive;		// (signs don't match) true if rhs is positive
+	bool sign = lhs.mSignificand.isPositive;	// sign of both numbers
+
+	// Get the significand sizes ignoring any leading zeros
+	index_type lSigSize = l - lhs.mSignificand.lsb + 1;
+	index_type rSigSize = r - rhs.mSignificand.lsb + 1;
+
+	// Check if the numbers have different orders of magnitude
+	// They have the same order of magnitude if the difference of their exponents is the opposite of the difference of their significand lengths
+	index_type expDiff = 0;
+	if (!integerDifference(lhs.mExponent, rhs.mExponent, expDiff)) {
+		// exp difference is too large, check which exponent has a larger size
+		if (lhs.mExponent.isPositive != rhs.mExponent.isPositive) return (rhs.mExponent.isPositive == sign);
+		bool expSign = lhs.mExponent.isPositive;
+		index_type eL = lhs.mExponent.msb;
+		index_type eR = rhs.mExponent.msb;
+		while (eL > lhs.mExponent.lsb && lhs.mExponent.digits[eL] == 0) eL--;
+		while (eR > rhs.mExponent.lsb && rhs.mExponent.digits[eR] == 0) eR--;
+		index_type lExpSize = eL - lhs.mExponent.lsb + 1;
+		index_type rExpSize = eR - rhs.mExponent.lsb + 1;
+		bool rhsExpBigger = ((rExpSize > lExpSize) == expSign);
+		return (rhsExpBigger == sign);
+	}
+	index_type sigSizeDiff = lSigSize - rSigSize;
+	index_type magnitudeDiff = sigSizeDiff + expDiff;	// 0 if sigSizeDiff = -expDiff
+	if (magnitudeDiff < 0) return sign;			// lhs has a smaller order of magnitude
+	else if (magnitudeDiff > 0)	return !sign;	// rhs has a smaller order of magnitude
+
+	// Check all significand digits
+	for (; l >= lhs.mSignificand.lsb && r >= rhs.mSignificand.lsb; l--, r--) {
+		if (lhs.mSignificand.digits[l] < rhs.mSignificand.digits[r]) return sign;
+		else if (rhs.mSignificand.digits[r] < lhs.mSignificand.digits[l]) return !sign;
+	}
+	index_type lRep = lhs.mRepMSB;
+	index_type rRep = rhs.mRepMSB;
+	while (l >= lhs.mSignificand.lsb) {	// check the remaining lhs digits
+		digit_type rDigit = 0;
+		if (rRep >= 0) {
+			rDigit = rhs.mSignificand.digits[rRep];
+			if (--rRep < rhs.mRepLSB) rRep = rhs.mRepMSB;
+		}
+		if (lhs.mSignificand.digits[l] < rDigit) return sign;
+		else if (rDigit < lhs.mSignificand.digits[l]) return !sign;
+		l--;
+	}
+	while (r >= rhs.mSignificand.lsb) {	// check the remaining rhs digits
+		digit_type lDigit = 0;
+		if (lRep >= 0) {
+			lDigit = lhs.mSignificand.digits[lRep];
+			if (--lRep < lhs.mRepLSB) lRep = lhs.mRepMSB;
+		}
+		if (lDigit < rhs.mSignificand.digits[r]) return sign;
+		else if (rhs.mSignificand.digits[r] < lDigit) return !sign;
+		r--;
+	}
+
+	// Check if either significand has a repetend
+	if (lhs.mRepLSB >= 0 || rhs.mRepLSB >= 0) {
+		if (lhs.mRepLSB >= 0 && rhs.mRepLSB < 0) {			// only lhs has a repetend
+			for (lRep = lhs.mRepMSB; lRep >= lhs.mRepLSB; lRep--)
+				if (lhs.mSignificand.digits[lRep] != 0) return sign;
+		} else if (rhs.mRepLSB >= 0 && lhs.mRepLSB < 0) {	// only rhs has a repetend
+			for (rRep = rhs.mRepMSB; rRep >= rhs.mRepLSB; rRep--)
+				if (rhs.mSignificand.digits[rRep] != 0) return !sign;
+		} else {											// both have a repetend
+			index_type lRepSize = lhs.mRepMSB - lhs.mRepLSB + 1;
+			index_type rRepSize = rhs.mRepMSB - rhs.mRepLSB + 1;
+
+			// line up the repetends if the significands are different lengths
+			index_type lRepStart = lhs.mRepMSB, rRepStart = rhs.mRepMSB;
+			index_type lSigSize = lhs.mSignificand.msb - lhs.mSignificand.lsb + 1;
+			index_type rSigSize = rhs.mSignificand.msb - rhs.mSignificand.lsb + 1;
+			if (lSigSize > rSigSize) rRepStart -= (lSigSize-rSigSize) % rRepSize;
+			else if (rSigSize > lSigSize) lRepStart -= (rSigSize-lSigSize) % lRepSize;
+
+			// extend each number's repetend, the most extra digits you need to compare is the lcm(lRepSize, rRepSize)
+			index_type numExtraDigits = std::lcm(lRepSize, rRepSize);
+			lRep = lRepStart;
+			rRep = rRepStart;
+			for (index_type i = 0; i < numExtraDigits; i++) {
+				if (lhs.mSignificand.digits[lRep] < rhs.mSignificand.digits[rRep]) return sign;
+				else if (rhs.mSignificand.digits[rRep] < lhs.mSignificand.digits[lRep]) return !sign;
+				if (--lRep < lhs.mRepLSB) lRep = lhs.mRepMSB;
+				if (--rRep < rhs.mRepLSB) rRep = rhs.mRepMSB;
+			}
+		}
+	}
+	
+	return false;	// numbers are equal
+}
 bool bigNum::operator!=(const bigNum &rhs) const {
 	return !(*this == rhs);
 }
-
-// update with repetend
 bool bigNum::operator>(const bigNum &rhs) const {
-	bigNum lhs = *this;
-
-	// Check if one number is + and one is -
-	if (!lhs.isNegative() && rhs.isNegative()) return true;
-	if (lhs.isNegative() && !rhs.isNegative()) return false;
-
-	// Check if one number has more integer digits
-	sizeType lhsMSIntDigitPos = lhs.mSize - 1;
-	sizeType rhsMSIntDigitPos = rhs.mSize - 1;
-	while (lhsMSIntDigitPos > lhs.mIntegerStart && lhs[lhsMSIntDigitPos] == 0) lhsMSIntDigitPos--;
-	while (rhsMSIntDigitPos > rhs.mIntegerStart && rhs[rhsMSIntDigitPos] == 0) rhsMSIntDigitPos--;
-	if ((lhsMSIntDigitPos - lhs.mIntegerStart) > (rhsMSIntDigitPos - rhs.mIntegerStart)) return true;
-	if ((rhsMSIntDigitPos - rhs.mIntegerStart) > (lhsMSIntDigitPos - lhs.mIntegerStart)) return false;
-
-	// Compare the digits
-	sizeType l = lhsMSIntDigitPos, r = rhsMSIntDigitPos;
-	sizeType i = 0;
-	for (; i < lhs.mNumDigits && i < rhs.mNumDigits; i++) {
-		if (lhs[l-i] > rhs[r-i]) return true;
-		if (rhs[r-i] > lhs[l-i]) return false;
-	}
-	
-	// If the lhs has more fraction digits, check if any are non-zero
-	while (i < lhs.mNumDigits) {
-		if (lhs[l - i] > 0) return true;
-		i++;
-	}
-
-	// lhs <= rhs
-	return false;
+	return (rhs < *this);
 }
-
-bool bigNum::operator<(const bigNum &rhs) const {
-	bigNum lhs = *this;
-
-	// Check if the numbers are equal before using operator>
-	if (lhs == rhs) return false;
-
-	return !(lhs > rhs);
-}
-
-bool bigNum::operator>=(const bigNum &rhs) const {
-	bigNum lhs = *this;
-
-	// Check if the numbers are equal before using operator>
-	if (lhs == rhs) return true;
-
-	return (lhs > rhs);
-}
-
 bool bigNum::operator<=(const bigNum &rhs) const {
-	bigNum lhs = *this;
-
-	// Check if the numbers are equal before using operator>
-	if (lhs == rhs) return true;
-
-	return !(lhs > rhs);
+	return !(*this < rhs);
+}
+bool bigNum::operator>=(const bigNum &rhs) const {
+	return !(*this > rhs);
 }
 
+/* ------------------------------------------------------ */
+/*                      Arithmetic                        */
+/* -------------------------------------------------------*/
 
-/* -------------------------------- */
-/*             Addition             */
-/* ---------------------------------*/
-
-// !-- Fix for an operand with max number of digits
-bigNum bigNum::absValAdd(bigNum &a, bigNum &b) const {
-
-	// Make both integer parts the same length
-	sizeType aIntDigits = a.mSize - a.mIntegerStart;
-	sizeType bIntDigits = b.mSize - b.mIntegerStart;
-	if (aIntDigits > bIntDigits) b.padMSB(aIntDigits - bIntDigits);
-	else if (aIntDigits < bIntDigits) a.padMSB(bIntDigits - aIntDigits);
-
-	// Make both fraction parts the same length
-	sizeType aFracDigits = a.mIntegerStart;
-	sizeType bFracDigits = b.mIntegerStart;
-	if (aFracDigits > bFracDigits) b.padLSB(aFracDigits - bFracDigits, true);
-	else if (aFracDigits < bFracDigits) a.padLSB(bFracDigits - aFracDigits, true);
-
-	// The sum may contain at most 1 additional digit
-	sizeType resultSize = a.mSize + 1;
-	bigNum result(resultSize);
-	
-	// Add the digits, starting from the LSB
-	digitType carry = 0;
-	sizeType d;
-	for (d = 0; d < a.mSize; d++) {
-		result.mDigits[d] = a.mDigits[d] + b.mDigits[d] + carry;
-		if (result.mDigits[d] > 9) {
-			carry = 1;
-			result.mDigits[d] -= 10;
-		} else carry = 0;
-	}
-	if (carry == 1) result.mDigits[d] = 1;		// the sum contains an extra digit
-
-	// Update the decimal point position
-	result.mIntegerStart = a.mIntegerStart;
-	result.updateState();
-
-	return result;
+// Karatsuba multiplication
+std::pair<bigNum::num_type, bigNum::num_type> bigNum::num_type::splitAt(index_type m) const {
+	index_type numDigits = msb - lsb + 1;
+	if (m == 0) return {num_type(1), num_type(*this)};
+	if (m > mMaxDigits) throw std::overflow_error("Overflow in splitAt");
+	if (m >= numDigits) return {num_type(*this), num_type(1)};
+	num_type low(static_cast<size_type>(m)), high(static_cast<size_type>(numDigits-m));
+	index_type i = lsb;
+	for (index_type l = 0; i < lsb+m && i < size; i++, l++)
+		low.digits[l] = digits[i];
+	for (index_type h = 0; i <= msb && i < size; i++, h++)	// digit at index belongs to high
+		high.digits[h] = digits[i];
+	low.lsb = 0;
+	low.msb = m-1;
+	high.lsb = 0;
+	high.msb = numDigits-m-1;
+	return {low, high};
 }
+bigNum::num_type bigNum::karatsuba(const num_type &a, const num_type &b) const {
 
-bigNum bigNum::operator+(const bigNum &other) const {
-	bigNum a = *this;
-	bigNum b = other;
-	bigNum result;
-	if (a.isNegative()) {
-		if (b.isNegative()) {				// -a -b
-			result = absValAdd(a, b);
-			result.mIsNegative = true;
-		} else {							// -a +b
-			result = absValSubtract(b, a);
-		}
-	} else {
-		if (b.isNegative()) {				// +a -b
-			result = absValSubtract(a, b);
-		} else {							// +a +b
-			result = absValAdd(a, b);
-		}
-	}
-
-	return result;
-}
-
-/* ------------------------------------------------------- */
-/*            Subtraction (Method of complements)          */
-/* --------------------------------------------------------*/
-
-bigNum bigNum::absValSubtract(bigNum &lhs, bigNum &rhs) const {
-
-	// Minuend - subtrahend = difference
-
-	// Make sure the minuend is > subtrahend
-	bigNum &min = (lhs > rhs) ? lhs : rhs;
-	bigNum &sub = (lhs > rhs) ? rhs : lhs;
-	bool differenceIsNeg = (rhs > lhs) ? true : false;
-
-	// Make both integer parts the same length
-	sizeType minIntDigits = min.mSize - min.mIntegerStart;
-	sizeType subIntDigits = sub.mSize - sub.mIntegerStart;
-	if (minIntDigits > subIntDigits) sub.padMSB(minIntDigits - subIntDigits);
-	else if (minIntDigits < subIntDigits) min.padMSB(subIntDigits - minIntDigits);
-
-	// Make both fraction parts the same length
-	sizeType minFracDigits = min.mIntegerStart;
-	sizeType subFracDigits = sub.mIntegerStart;
-	if (minFracDigits > subFracDigits) sub.padLSB(minFracDigits - subFracDigits, true);
-	else if (minFracDigits < subFracDigits) min.padLSB(subFracDigits - minFracDigits, true);
-	
-	// Calculate the 9's complement of the minuend
-	bigNum minComplement(min.mSize);
-	for (sizeType i = 0; i < minComplement.mSize; i++)
-		minComplement.mDigits[i] = 9 - min.mDigits[i];
-
-	// Add the 9's complement of the minuend to the subtrahend
-	bigNum sum(min.mSize);
-	digitType carry = 0;
-	for (sizeType d = 0; d < sum.mSize; d++) {
-		sum.mDigits[d] = minComplement.mDigits[d] + sub.mDigits[d] + carry;
-		if (sum.mDigits[d] > 9) {
-			carry = 1;
-			sum.mDigits[d] -= 10;
-		} else carry = 0;
-	}
-
-	// Calculate the 9's complement of the sum
-	bigNum dif(min.mSize);
-	for (sizeType i = 0; i < dif.mSize; i++)
-		dif.mDigits[i] = 9 - sum.mDigits[i];
-
-	// Update state
-	dif.mIntegerStart = min.mIntegerStart;
-	dif.mIsNegative = differenceIsNeg;
-	dif.updateState();
-	
-	return dif;
-}
-
-bigNum bigNum::operator-(const bigNum &other) const {
-	bigNum lhs = *this;
-	bigNum rhs = other;
-	bigNum result;
-	if (lhs.isNegative()) {
-		if (rhs.isNegative()) {				// (-lhs) - (-rhs)
-			result = absValSubtract(rhs, lhs);
-		} else {							// (-lhs) - (+rhs)
-			result = absValAdd(rhs, lhs);
-			result.mIsNegative = true;
-		}
-	} else {
-		if (rhs.isNegative()) {				// (+lhs) - (-rhs)
-			result = absValAdd(lhs, rhs);
-		} else {							// (+lhs) - (+rhs)
-			result = absValSubtract(lhs, rhs);
-		}
-	}
-
-	return result;
-}
-
-/* --------------------------------------------------- */
-/*           Multiplication (Karatsuba Method)         */
-/* ----------------------------------------------------*/
-
-uint64_t toUInt64(const bigNum &n) { // ignores mIsNegative and mIntegerStart
-
-	uint64_t UINT64_T_MAX = std::numeric_limits<uint64_t>::max();
-	bigNum max(std::to_string(UINT64_T_MAX));
-	if (n > max) return 0;
-
-	sizeType end = n.mSize - 1;
-	while (end > n.mIntegerStart && n.mDigits[end] == 0) end--;
-
-	std::stringstream ss;
-	for (sizeType d = 0; d < n.mNumDigits; d++)
-		ss << n.mDigits[end - d];
-
-	uint64_t result;
-	ss >> result;
-
-	return result;
-}
-
-bool bigNum::splitAt(sizeType pos, bigNum &low, bigNum &high) const {
-	if (low.mSize < pos || high.mSize < (mSize - pos)) return false;
-	sizeType i;
-	for (i = 0; i < pos; i++)
-		low.mDigits[i] = mDigits[i];
-	for (sizeType j = 0; i < mSize; i++, j++)
-		high.mDigits[j] = mDigits[i];
-	low.updateState();
-	high.updateState();
-	return true;
-}
-
-bool bigNum::setKaratsubaDecimalPoint(const bigNum &lhs, const bigNum &rhs) {
-	
-	// Count the fractional digits, excluding trailing zeros
-	sizeType startL = 0, startR = 0;
-	while (lhs.mDigits[startL] == 0 && startL < lhs.mIntegerStart) startL++;
-	while (rhs.mDigits[startR] == 0 && startR < rhs.mIntegerStart) startR++;
-	sizeType numFracDigitsLHS = lhs.mIntegerStart - startL;
-	sizeType numFracDigitsRHS = rhs.mIntegerStart - startR;
-
-	// Add the number of fractional digits of both operands
-	mIntegerStart = numFracDigitsLHS + numFracDigitsRHS;
-
-	// If either operand's most significant digits begin with 0, the result will be missing leading zeros
-	if (mIntegerStart >= mSize)
-		padMSB(mIntegerStart - mSize + 1);
-
-	return true;
-}
-
-bigNum bigNum::integerKaratsuba(bigNum a, bigNum b) const {
-
-	// For operands under 10 digits, use 64-bit integer multiplication
-	if (a.mNumDigits < 10 && b.mNumDigits < 10) {
-		uint64_t i = toUInt64(a);
-		uint64_t j = toUInt64(b);
-		uint64_t p = i*j;
-		return bigNum(std::to_string(p));
-	}
-
-	// Set both bigNums to the same length
-	if (a.mSize > b.mSize) b.padMSB(a.mSize - b.mSize);
-	else if (a.mSize < b.mSize) a.padMSB(b.mSize - a.mSize);
-
-	// Choose m
-	sizeType m = a.mSize / 2 + (a.mSize % 2 != 0);	// m = ceiling(mSize/2)
-
-	// Split both bigNums into a low and high part separated at position m
-	bigNum aLow(m), aHigh(m);
-	bigNum bLow(m), bHigh(m);
-	a.splitAt(m, aLow, aHigh);
-	b.splitAt(m, bLow, bHigh);
-
-	/* Calculate Karatsuba equations, recursively call this function to perform the multiplications
-		z0 = (aLow)*(bLow)
-		z2 = (aHigh)*(bHigh)
-		z1 = (aLow + aHigh)*(bLow + bHigh) - z0 - z2 */
-	bigNum z0 = integerKaratsuba(aLow, bLow);
-	bigNum z2 = integerKaratsuba(aHigh, bHigh);
-	bigNum z1 = absValSubtract(absValSubtract((integerKaratsuba(absValAdd(aLow, aHigh), absValAdd(bLow, bHigh))), z0), z2);
-
-	/* Compute the result using these intermediate values
-		result = ((10^(2*m)) * z2) + ((10^m) * z1) + z0 */
-	z2.shiftLeft(2 * m);
-	z1.shiftLeft(m);
-	bigNum result = absValAdd(absValAdd(z0, z2), z1);
-
-	return result;
-}
-
-// Does not sanitize result (leaves leading/trailing zeros)
-bigNum bigNum::absValMultiply(bigNum a, bigNum b) const {
-
-	// Remove extra leading and trailing zeros from the operands
-	a.removeLeadingZeros();
-	a.removeTrailingZeros();
-	b.removeLeadingZeros();
-	b.removeTrailingZeros();
-
-	// Perform karatsuba multiplication 
-	bigNum result = integerKaratsuba(a, b);
-	result.setKaratsubaDecimalPoint(a, b);
-	result.updateState();
-
-	return result;
-}
-
-// Sanitizes result (removes leading/trailing zeros)
-bigNum bigNum::operator*(const bigNum &other) const {
-
-	bigNum a = *this;
-	bigNum b = other;
-
-	// Check if either operand is zero
-	if (a.mIsZero || b.mIsZero)
-		return bigNum("0");
-
-	bigNum result = absValMultiply(a, b);
-
-	// Remove leading and trailing zeros
-	result.removeLeadingZeros();
-	result.removeTrailingZeros();
-
-	// Check negative operands
-	if (a.mIsNegative != b.mIsNegative)
-		result.mIsNegative = true;
-
-	return result;
-}
-
-/* ------------------------------------------------------- */
-/*             Division (Newton-Raphson Method)            */
-/* --------------------------------------------------------*/
-
-bigNum bigNum::round(const bigNum &n, sizeType precision) const {
-	if (precision == 0)
-		throw std::length_error("Bignum cannot be constructed with no digits");
-
-	if (precision >= n.mNumDigits) {
-		bigNum result = n;		// make a copy of n
+	// Base case: For operands under 256 digits, use long multiplication
+	index_type aNumDigits = a.msb - a.lsb + 1;
+	index_type bNumDigits = b.msb - b.lsb + 1;
+	if (aNumDigits < 256 && bNumDigits < 256) {
+		num_type result(a);
+		result.longMultiply(b);
 		return result;
 	}
 
-	bigNum result(n.mNumDigits);
+	// Choose m, the position to split each number
+	index_type n = (aNumDigits > bNumDigits) ? aNumDigits : bNumDigits;
+	index_type m = n / 2;
 
-	// Set all digits outside the result's precision to 0
-	sizeType i = 0;
-	for (; i < n.mNumDigits - precision; i++)
-		result.mDigits[i] = 0;
+	// Split a and b into smaller numbers with approximately half the number of digits
+	auto [aLow, aHigh] = a.splitAt(m);
+	auto [bLow, bHigh] = b.splitAt(m);
 
-	// Copy over each digit, rounding when necessary
-	digitType carry = n[i-1] >= 5 ? 1 : 0;
-	for (; i < n.mNumDigits; i++) {
-		result.mDigits[i] = n.mDigits[i] + carry;
-		if (result.mDigits[i] > 9) {
-			carry = 1;
-			result.mDigits[i] -= 10;
-		} else carry = 0;
-	}
+	// Recursive calls on numbers of approximately half size
+	num_type z0 = karatsuba(aLow, bLow);
+	num_type z2 = karatsuba(aHigh, bHigh);
+	aLow.add(aHigh);
+	bLow.add(bHigh);
+	num_type z1 = karatsuba(aLow, bLow);
+	z1.subtract(z0);
+	z1.subtract(z2);
 
-	// If the result's MSB is rounded above 9 (e.g. rounding 9.99), the result requires an extra digit
-	if (carry == 1) {
-		bigNum result1(n.mNumDigits + 1);
-		sizeType i;
-		for (i = 0; i < result.mSize; i++)
-			result1.mDigits[i] = result.mDigits[i];
-		result1.mDigits[i] = carry;
-		result = result1;
-	}
+	z0.add(z1, m);		// multiply z1 by 10^m and add to z0
+	z0.add(z2, 2*m);	// multiply z2 by 10^(2*m) and add to z0
+	return z0;
+}
 
-	// Check if the rounded number is 0 and update mIsNegative and mIntegerStart
-	result.mIntegerStart = n.mIntegerStart;
-	result.mIsNegative = n.mIsNegative;
-	result.updateState();
+bigNum& bigNum::operator+=(const bigNum &rhs) {
 	
-	return result;
+	// Find the difference between the lhs and rhs exponents
+	index_type expDiff = 0;
+	if (!integerDifference(mExponent, rhs.mExponent, expDiff)) throw std::overflow_error("Overflow in operator+=");
+
+	// Add the significands
+	index_type expShift = mSignificand.add(rhs.mSignificand, -expDiff);
+
+	// The sum takes the smaller exponent
+	bool expIsLarger = (mExponent.isPositive == rhs.mExponent.isPositive) ? (expDiff > 0) : mExponent.isPositive;
+	if (expIsLarger) mExponent = rhs.mExponent;
+
+	return *this;
 }
+bigNum& bigNum::operator-=(const bigNum &rhs) {
 
-//bigNum bigNum::newtonRaphsonDivide(const bigNum &lhs, const bigNum &rhs) const {
-//
-//	// Newton-Raphson Division
-//	// Q = N/D
-//	// 1. Calculate an estimate X0 for the reciprocal (1/D) of the divisor
-//	// 2. Compute successively more accurate estimates X1, X2, ... of the reciprocal
-//	// 3. Compute the quotient by multiplying the numerator by the reciprocal Xn
-//
-//	bigNum N = lhs;
-//	bigNum D = rhs;
-//	digitType precision = 50;							// CONSIDER CHANGING TO SOME OTHER VALUE
-//
-//														// Scale denominator to be in [0,1)
-//	int e = D.mNumDigits - D.mIntegerStart;				// FIX THIS FOR NUMBERS < 0
-//	bigNum Dnorm = D;
-//	Dnorm.mIntegerStart += e;						// FIX: DECIMALPOINTPOS MAY BE UPDATED BEYOND MSIZE
-//
-//														// Scale numerator by the same amount
-//	bigNum Nnorm = N;
-//	Nnorm.mIntegerStart += e;						// FIX: DECIMALPOINTPOS MAY BE UPDATED BEYOND MSIZE
-//
-//														// Calculate an initial guess X0 for 1/Dnorm		// FIX THIS FOR ANY LENGTH DNORM
-//														// X0 = A - B(Dnorm)								// FIX CONSTANTS MUST BE ROUNDED NOT TRUNCATED
-//	std::string a = divConstantA.substr(0, Dnorm.mNumDigits + 2);	// Calculate the constants to the same
-//	std::string b = divConstantB.substr(0, Dnorm.mNumDigits + 2);	// precision as Dnorm
-//	bigNum A = round(bigNum(a), Dnorm.mNumDigits);
-//	bigNum B = round(bigNum(b), Dnorm.mNumDigits);
-//	bigNum X0 = A - (B * Dnorm);
-//
-//	// Refine the initial guess by iterating through:
-//	// Xn = Xn-1 + Xn-1 * (1 - Dnorm * Xn-1)^
-//	bigNum Xn = X0, Xnminus1 = X0;
-//	bigNum one("1");
-//	bigNum two("2");
-//	for (int i = 0; i < 5; i++) {						// FIX THIS WITH THE CORRECT # OF ITERATIONS
-//		Xnminus1 = Xn;
-//		Xn = Xnminus1 + (Xnminus1 * (one - (Dnorm * Xnminus1)));	// FIX THIS BY LIMITING PRECISION OF EACH   <--------- this next
-//		Xn = absValAdd(Xnminus1, integerKaratsuba(Xnminus1, absValSubtract(one, integerKaratsuba(Dnorm, Xnminus1))));
-//		//Xn = Xnminus1 * (two - (Dnorm * Xnminus1));
-//	}															// MULTIPLICATION TO FINAL (?) PRECISION
-//
-//																// Calculate the quotient by multiplying Nnorm by the final iteration
-//	bigNum result = Nnorm * Xn;
-//
-//	return result;
-//}
+	// Find the difference between the lhs and rhs exponents
+	index_type expDiff = 0;
+	if (!integerDifference(mExponent, rhs.mExponent, expDiff)) throw std::overflow_error("Overflow in operator-=");
 
+	// Set the significand
+	index_type expShift = mSignificand.subtract(rhs.mSignificand, -expDiff);
 
-/* ------------------------------------------------------- */
-/*             Division (Long Division)                    */
-/* --------------------------------------------------------*/
+	// Adjust the exponent
+	bool expIsLarger = (mExponent.isPositive == rhs.mExponent.isPositive) ? (expDiff > 0) : mExponent.isPositive;
+	if (expIsLarger) mExponent = rhs.mExponent;
 
-bigNum bigNum::extractBigNum(sizeType lsb, sizeType msb) const {
-	
-	if (msb < lsb || msb >= mSize) throw std::invalid_argument("Bad indexes in extractBigNum");
-
-	sizeType length = msb - lsb + 1;
-	std::stringstream ss;
-	for (sizeType i = 0; i < length; i++)
-		ss << mDigits[msb - i];		// construct string starting from the msb
-
-	return bigNum(ss.str());
+	return *this;
 }
+bigNum& bigNum::operator*=(const bigNum &rhs) {
 
-bigNum bigNum::multiplyByDigit(digitType d) const {
-	bigNum result(mSize);
+	// Sum the exponents
+	mExponent.add(rhs.mExponent);
 
-	digitType carry = 0;
-	for (sizeType i = 0; i < mSize; i++) {
-		result.mDigits[i] = mDigits[i] * d + carry;
-		if (result.mDigits[i] > 9) {
-			carry = result.mDigits[i] / 10;
-			result.mDigits[i] %= 10;
-		} else carry = 0;
-	}
-	if (carry != 0) {	// result of multiplication requires 1 extra digit
-		digitType *newData = new digitType[result.mSize + 1];
-		for (sizeType i = 0; i < result.mSize; i++)
-			newData[i] = result.mDigits[i];
-		newData[result.mSize] = carry;
-		delete[] result.mDigits;
-		result.mDigits = newData;
-		result.mSize++;
+	// Multiply the significands
+	index_type numDigits = mSignificand.msb - mSignificand.lsb + 1;
+	index_type rhsNumDigits = rhs.mSignificand.msb - rhs.mSignificand.lsb + 1;
+	if (numDigits < 256 && rhsNumDigits < 256) {		// long multiply
+		mSignificand.longMultiply(rhs.mSignificand);	
+	} else {											// karatsuba multiply
+		mSignificand = karatsuba(mSignificand, rhs.mSignificand);
+		mSignificand.isPositive = (mSignificand.isPositive == rhs.mSignificand.isPositive);
 	}
 
-	result.updateState();
+	return *this;
+}
+bigNum& bigNum::operator/=(const bigNum &rhs) {
 
-	return result;
+	// Find the difference between the lhs and rhs exponents
+	index_type expDiff = 0;
+	if (!integerDifference(mExponent, rhs.mExponent, expDiff)) throw std::overflow_error("Overflow in operator/=");
+
+	// Subtract the exponents
+	mExponent.subtract(rhs.mExponent);
+
+	// Divide the significands
+	div_mode mode = mPrecision ? div_mode::precision : div_mode::default;
+	index_type shiftAmt = mSignificand.longDivide(mode, rhs.mSignificand, -expDiff);
+	shift(-shiftAmt);	// shift to keep the significand an integer
+
+	return *this;
+}
+bigNum& bigNum::operator%=(const bigNum &rhs) {
+	return *this;
 }
 
-// Returns a quotient and remainder
-bigNum bigNum::divideByDigit(digitType d, bigNum& remainder) const {
+bigNum operator+(bigNum lhs, const bigNum &rhs) {
+	lhs += rhs;
+	return lhs;
+}
+bigNum operator-(bigNum lhs, const bigNum &rhs) {
+	lhs -= rhs;
+	return lhs;
+}
+bigNum operator*(bigNum lhs, const bigNum &rhs) {
+	lhs *= rhs;
+	return lhs;
+}
+bigNum operator/(bigNum lhs, const bigNum &rhs) {
+	lhs /= rhs;
+	return lhs;
+}
 
-	if (d == 0) throw std::invalid_argument("Division by zero");
 
-	bigNum quotient(mSize);
-	digitType r = 0;
 
-	for (sizeType i = 0; i < mSize; i++) {
-		quotient.mDigits[(mSize-1) - i] = (10*r + mDigits[(mSize-1) - i]) / d;
-		r = (10*r + mDigits[(mSize-1) - i]) % d;
+
+
+
+
+
+
+
+
+/*
+bigNum::index_type bigNum::num_type::longDivide(div_mode mode, num_type rhs, index_type rhsShift) {
+
+	// Check for division by zero and bad precision
+	index_type z = rhs.msb;
+	while (rhs.digits[z] == 0 && z > rhs.lsb) z--;
+	if (z == rhs.lsb && rhs.digits[z] == 0) throw std::invalid_argument("Division by zero");
+	if (mode == div_mode::precision && mPrecision == 0) throw std::invalid_argument("Invalid precision in longDivide");
+
+	// Helper function for single digit multiplication
+	auto multiplyByDigit = [](num_type &num, digit_type d) {
+		if (d == 1) return;
+		digit_type carry = 0;
+		for (index_type i = num.lsb; i <= num.msb; i++) {
+			num.digits[i] = num.digits[i] * d + carry;
+			carry = num.digits[i] / 10;
+			num.digits[i] %= 10;
+		}
+		if (carry) {
+			if (num.msb+1 >= num.size) num.resize(static_cast<index_type>(num.size)+1);
+			num.digits[num.msb+1] = carry;
+			num.msb++;
+		}
+	};
+
+	// Return val, the shift required to make the quotient an integer
+	index_type lhsShift = 0;
+	num_type &lhs = *this;
+
+	// Calculate the number of integer digits in the quotient (using rhsShift)
+	index_type lhsNumDigits = lhs.msb - lhs.lsb + 1;
+	index_type rhsNumDigits = rhs.msb - rhs.lsb + 1;
+	index_type quotNumIntegerDigits = lhsNumDigits - (rhsNumDigits + rhsShift) + 1;
+	if (quotNumIntegerDigits < 0) quotNumIntegerDigits = 0;	// lhs < rhs
+
+	// Add/remove additional digits of precision
+	index_type quotNumDigits = quotNumIntegerDigits;
+	if (mode == div_mode::default) quotNumDigits += (mDefaultDecimalPrecision + 1);
+	else if (mode == div_mode::precision) quotNumDigits = static_cast<index_type>(mPrecision) + 1;
+	if (quotNumDigits > mMaxDigits) throw std::overflow_error("Overflow in longDivide");
+
+	if (rhsNumDigits == 1) {	// If the divisor is a single digit, use a simpler algorithm
+		digit_type d = rhs.digits[rhs.lsb];
+		lhsShift = longDivideDigit(mode, d, quotNumIntegerDigits);
+		isPositive = (isPositive == rhs.isPositive);
+		return lhsShift;
 	}
 
-	remainder = bigNum(std::to_string(r));
+	// Allocate memory for the quotient
+	size_type quotSize = (quotNumDigits > size) ? static_cast<size_type>(quotNumDigits) : size;
+	digit_type *quotient = new digit_type[quotSize]();
 
-	quotient.updateState();
-	remainder.updateState();
 
-	return quotient;
-}
+	// Normalize lhs and rhs so that the first digit of rhs is >= 5 and lhs has an additional digit
+	digit_type d = 10 / (rhs.digits[rhs.msb] + 1);	// normalization factor
+	index_type lMSB = lhs.msb;
+	multiplyByDigit(lhs, d);
+	multiplyByDigit(rhs, d);
+	if (lhs.msb == lMSB) {	// add a zero to the lhs
+		if (lhs.msb+1 >= lhs.size) lhs.resize(static_cast<index_type>(lhs.size)+1);
+		lhs.digits[lhs.msb+1] = 0;
+		lhs.msb++;
+	}
 
-// Returns true if the division results in a terminating or repeating decimal, false otherwise
-bool bigNum::precisionDivideByDigit(digitType d, const bigNum& remainder, bigNum& quotient) const {
+	// Allocate and initialize the partial dividend
+	index_type n = rhsNumDigits + 1;	// size of partial dividend
+	if (n > mMaxDigits) throw std::overflow_error("Overflow in longDivide");
+	digit_type *div = new digit_type[static_cast<size_type>(n)]();
+	index_type l = lhs.msb;
+	for (index_type i = n-1; i >= 0 && l >= lhs.lsb; i--, l--)
+		div[i] = lhs.digits[l];
 
-	// Divide remainder by d up to a precision of 9 and store the result in quotient
+	// Cache the products of the multiplication of the divisor by each digit
+	num_type *products[10]{};
 
-	if (d == 0) throw std::invalid_argument("Division by zero");
-	if (remainder.mNumDigits > 1 || remainder.mSize < 1 || remainder.mIntegerStart != 0)	// remainder must be 1 digit
-		throw std::invalid_argument("Invalid remainder in precisionDivideByDigit");
-	
-	bigNum u = *this;
-	digitType r = remainder[0];
-	std::unordered_map<digitType, sizeType> remainders;	// keep track of remainders to detect a repetend
-	remainders.emplace(d, 0);
-	bool returnVal = false;
+	// Divide u/v according to div_mode:
+	// 		DEFAULT: divide to get an integer quotient then divide to the default decimal precision, stopping if the quotient terminates or repeats
+	//		PRECISION: divide to the precision specified in mPrecision
+	//		EUCLID: divide to get an integer quotient
+	digit_type *u = lhs.digits;
+	digit_type *v = rhs.digits;
+	index_type p = 0;				// count number of precise digits
+	index_type q = quotNumDigits-1;	// quotient index
 
-	// Make space in the quotient for up to 9 digits of precision
-	sizeType precision = 9;
-	quotient.padLSB(precision, true);
+	for (index_type i = 0; i < quotNumDigits && q >= 0; i++, q--) {
+		// Divide the partial dividend (div) by the divisor (v) to get one digit (qHat) of the quotient
 
-	// Divide r by d until the resulting quotient terminates or repeats
-	for (sizeType i = 0; i < precision; i++) {
-		quotient.mDigits[precision - 1 - i] = (10*r) / d;
-		r = (10*r) % d;
-
-		// If the remainder is 0, the result of the division terminates
-		if (r == 0) {
-			returnVal = true;
-			break;
+		// Calculate qHat
+		digit_type qHat = (10*div[n-1]+div[n-2]) / v[rhs.msb];
+		digit_type rHat = (10*div[n-1]+div[n-2]) % v[rhs.msb];
+		while (qHat >= 10 || qHat*v[rhs.msb-1] >(10*rHat+div[n-3])) {
+			qHat--;
+			rHat += v[rhs.msb];
+			if (rHat >= 10) break;
 		}
 
-		// Check if this remainder has been seen before --> indicates the existence of a repetend
-		auto it = remainders.find(r);
-		if (it != remainders.end()) {
-			quotient.mRepetendSize = (i - it->second) + 1;
-			quotient.mRepetendStart = precision - 1 - i;
-			returnVal = true;
-			break;
-		} else remainders.emplace(r, i + 1);
-	}
-
-	quotient.removeTrailingZeros();
-	quotient.updateState();
-
-	return returnVal;
-}
-
-// Returns a quotient and remainder
-bigNum bigNum::integerLongDivision(const bigNum &dividend, const bigNum &divisor, bigNum& remainder) const {
-
-	bigNum u = dividend;
-	bigNum v = divisor;
-
-	// Remove extra leading and trailing zeros
-	u.removeLeadingZeros();
-	u.removeTrailingZeros();
-	v.removeLeadingZeros();
-	v.removeTrailingZeros();
-
-	// Requires dividend.mSize >= divisor.mSize
-	if (u.mSize < v.mSize) throw std::invalid_argument("Invalid operator size in precisionLongDivision");
-	if (v.mNumDigits == 1) return u.divideByDigit(v.mDigits[0], remainder);
-
-	sizeType n = v.mSize + 1;				// size of partial dividend
-	sizeType m = u.mSize - v.mSize + 1;		// size of quotient
-	bigNum quotient(m);
-	
-	// Normalize the dividend and divisor so that the first digit of the divisor is >= 5
-	digitType d = 10 / (v[0] + 1);
-	sizeType uSize = u.mSize;
-	u = u.multiplyByDigit(d);
-	v = v.multiplyByDigit(d);
-	if (u.mSize == uSize) u.padMSB(1);		// Ensure u has one extra leading digit
-
-	// For each iteration, divide the partial dividend by v in-place to obtain one digit (q) of the final quotient and a partial quotient
-	for (sizeType i = 0; i < m; i++) {
-
-		// Partial dividend consists of the digits u[i] to u[i+n-1]
-		
-		// Make a guess for q by dividing the first two digits of the partial dividend u[i]u[i+1] by v[0] and adjusting if the guess is too high
-		digitType q = (u[i] == v[0]) ? 9 : (u[i] * 10 + u[i+1]) / v[0];	
-		while ((v[1]*q) > (10*(u[i]*10 + u[i+1] - q*v[0]) + u[i+2])) q--;
-
-		// Compute the partial quotient by subtracting q*v from the partial dividend in-place
-		bigNum product = v.multiplyByDigit(q);
-		if (product.mSize != (n)) product.padMSB((n) - product.mSize);
-		sizeType l = (u.mSize-1) - (n-1) - i;	// Index of partial dividend's least significant digit
-
-		// (subtraction done using method of complements)
-		digitType carry = 0;
-		for (sizeType j = 0; j < n; j++) {		// Complement the minuend and add the subtrahend
-			u.mDigits[l + j] = 9 - u.mDigits[l + j] + product.mDigits[j] + carry;
-			if (u.mDigits[l + j] > 9) {
+		// Multiply v by qHat and subtract from the partial dividend
+		if (!products[qHat]) {
+			products[qHat] = new num_type(rhs);
+			multiplyByDigit(*products[qHat], qHat);
+		}
+		num_type &product = *products[qHat];
+		digit_type carry = 0;
+		for (index_type j = 0, k = product.lsb; j < n; j++, k++) {
+			div[j] = (9 - div[j]) + product.digits[k] + carry;
+			if (div[j] > 9) {
 				carry = 1;
-				u.mDigits[l + j] -= 10;
+				div[j] -= 10;
 			} else carry = 0;
 		}
-		if (carry == 0) {						// Complementing gives the partial quotient
-			for (sizeType j = 0; j < n; j++)
-				u.mDigits[l + j] = 9 - u.mDigits[l + j];
-		} else if (carry == 1) {				// Result is negative - q was 1 too large
-			
+		if (carry) {	// result is negative - q was 1 too large
+			qHat--;
 			// "End-around carry" - add the carry to the LSB to get the difference (a negative value)
-			for (sizeType j = 0; j < n; j++) {
-				u.mDigits[l + j] += carry;
-				if (u.mDigits[l + j] > 9) u.mDigits[l + j] -= 10;
+			for (index_type j = 0; j < n; j++) {
+				div[j] += carry;
+				if (div[j] > 9) div[j] -= 10;
 				else break;
 			}
-			
-			// Add back v to get the correct partial quotient (done by subtracting the partial quotient from v since the partial quotient was negative)
+			// Add back v to get the correct partial quotient
 			carry = 0;
-			for (sizeType j = 0; j < (n - 1); j++) {
-				u.mDigits[l + j] += 9 - v.mDigits[j] + carry;
-				if (u.mDigits[l + j] > 9) {
+			for (index_type j = 0, k = rhs.lsb; j < n-1; j++, k++) {
+				div[j] += (9 - v[k]) + carry;
+				if (div[j] > 9) {
 					carry = 1;
-					u.mDigits[l + j] -= 10;
+					div[j] -= 10;
 				} else carry = 0;
 			}
-			u.mDigits[n-1] = 9;					// Carry will always be 0 for the last digit
-			for (sizeType j = 0; j < n; j++)	// Complementing gives the partial quotient
-				u.mDigits[l + j] = 9 - u.mDigits[l + j];
-
-			q--;
+			div[n-1] = 9;	// carry will always be 0 for the last digit
 		}
-
-		// Set this digit of the final quotient
-		quotient[i] = q;
-	}
-
-	// Denormalize the dividend to get the remainder
-	remainder = u.divideByDigit(d, v);
-	remainder.removeLeadingZeros();
-	remainder.updateState();
-
-	// Update state
-	quotient.updateState();
-
-	return quotient;
-}
-
-// Returns true if the division results in a terminating or repeating decimal, false otherwise
-bool bigNum::precisionLongDivision(const bigNum& remainder, const bigNum& divisor, bigNum& quotient, sizeType precision) const {
-
-	if (precision <= 0) throw std::invalid_argument("Invalid precision in precisionLongDivision");
-	if (remainder.mSize > (divisor.mSize + 1)) throw std::invalid_argument("Invalid operator size in precisionLongDivision");
-	if (remainder.mSize == 1 && remainder.mDigits[0] == 0) return true;
-
-	bigNum u = remainder;
-	bigNum v = divisor;
-	bool returnVal = false;
-
-	// Remove extra leading and trailing zeros
-	u.removeLeadingZeros();
-	u.removeTrailingZeros();
-	v.removeLeadingZeros();
-	v.removeTrailingZeros();
-
-	if (v.mNumDigits == 1) return u.precisionDivideByDigit(v.mDigits[0], remainder, quotient);
-
-	// Make space in the quotient for # of digits up to the specified precision
-	quotient.padLSB(precision, true);
-
-	// Multiply the initial remainder by 10
-	u.shiftLeft(1);
-
-	// Normalize the dividend and divisor so that the first digit of the divisor is >= 5
-	digitType d = 10 / (v[0] + 1);
-	u = u.multiplyByDigit(d);
-	v = v.multiplyByDigit(d);
-	if (u.mSize < (v.mSize + 1)) u.padMSB(v.mSize + 1 - u.mSize);
-
-	sizeType n = u.mSize;
-
-	std::unordered_map<bigNum, sizeType> remainders;	// keep track of remainders to detect a repetend
-	remainders.emplace(u, 0);
-
-	// For each iteration, multiply the remainder by 10 and divide it by v in-place to obtain one digit (q) of the quotient and a new remainder
-	for (sizeType i = 0; i < precision; i++) {
-
-		// Make a guess for q by dividing the first two digits of the remainder u[0]u[1] by v[0] and adjusting if the guess is too high
-		digitType q = (u[0] == v[0]) ? 9 : (u[0] * 10 + u[1]) / v[0];
-		while (v[1]*q > (10*(u[0]*10 + u[1] - q*v[0]) + u[2])) q--;
-
-		// Compute the next remainder by subtracting q*v from the remainder in-place
-		bigNum product = v.multiplyByDigit(q);
-		if (product.mSize < n) product.padMSB(n - product.mSize);
-
-		// (subtraction done using method of complements)
-		digitType carry = 0;
-		for (sizeType j = 0; j < n; j++) {				// Complement the minuend and add the subtrahend
-			u.mDigits[j] = 9 - u.mDigits[j] + product.mDigits[j] + carry;
-			if (u.mDigits[j] > 9) {
-				carry = 1;
-				u.mDigits[j] -= 10;
-			} else carry = 0;
-		}
-		if (carry == 0) {								// Complementing gives the next remainder
-			for (sizeType j = 0; j < (n - 1); j++)
-				u.mDigits[n-1-j] = 9 - u.mDigits[n-2-j];// Shift to get remainder*10 
-			u.mDigits[0] = 0;
-		} else if (carry == 1) {						// Result is negative - q was 1 too large
-
-			// "End-around carry" - add the carry to the LSB to get the difference (a negative value)
-			for (sizeType j = 0; j < n; j++) {
-				u.mDigits[j] += carry;
-				if (u.mDigits[j] > 9) u.mDigits[j] -= 10;
-				else break;
-			}
-
-			// Add back v to get the correct remainder (done by subtracting the remainder from v since the remainder was negative)
-			carry = 0;
-			for (sizeType j = 0; j < (n - 1); j++) {	// Complement the minuend and add the subtrahend
-				u.mDigits[j] += 9 - v.mDigits[j] + carry;
-				if (u.mDigits[j] > 9) {
-					carry = 1;
-					u.mDigits[j] -= 10;
-				} else carry = 0;
-			}
-			u.mDigits[n-1] = 9;							// Carry will always be 0 for the last digit
-			for (sizeType j = 0; j < (n - 1); j++)		// Complementing gives the next remainder
-				u.mDigits[n-1-j] = 9 - u.mDigits[n-2-j];// Shift to get remainder*10
-			u.mDigits[0] = 0;
-
-			q--;
-		}
+		for (index_type j = 0; j < n; j++)
+			div[j] = 9 - div[j];
 
 		// Set this digit of the quotient
-		quotient.mDigits[precision-1-i] = q;
+		quotient[q] = qHat;
 
-		// If the remainder is 0, the result of the division terminates
-		bool isZero = true;
-		for (sizeType j = 0; j < n; j++)
-			if (u.mDigits[j] != 0) {
-				isZero = false;
-				break;
+		// Check for termination
+		if (mode == div_mode::default) {
+			if (i >= quotNumIntegerDigits) {	// start counting precision after integer digits
+				// Check for a zero remainder
+				bool zeroRem = true;
+				index_type j = 0;
+				while (zeroRem && j < n) if (div[j++] != 0) zeroRem = false;
+				if (zeroRem) { if (qHat == 0) q++; break; }
+				if (p > 0 || qHat || quotNumIntegerDigits > 0) p++;
+				if (p >= mDefaultDecimalPrecision) break;
 			}
-		if (isZero) {
-			returnVal = true;
-			break;
+		} else if (mode == div_mode::precision) {
+			if (p > 0 || qHat) p++;
+			if (p >= mPrecision) break;
 		}
 
-		// Check if this remainder has been seen before --> indicates the existence of a repetend
-		auto it = remainders.find(u);
-		if (it != remainders.end()) {
-			quotient.mRepetendSize = (i - it->second) + 1;
-			quotient.mRepetendStart = precision - 1 - i;
-			returnVal = true;
+		// Shift the partial dividend
+		for (index_type j = n-1; j > 0; j--)
+			div[j] = div[j-1];
+		div[0] = (l >= lhs.lsb) ? u[l--] : 0;
+	}
+
+	// Set the result
+	delete[] div;
+	for (index_type i = 0; i < 10; i++) delete products[i];
+
+
+
+	//// Divide rhs into lhs and store the result in quotient
+	//index_type qLSB = lhs.divideDigits(mode, rhs, quotient, quotNumDigits, quotNumIntegerDigits);
+
+	// Set the result
+	if (qLSB < 0) qLSB = 0;
+	index_type numDigitsSet = quotNumDigits - qLSB;
+	index_type numIntDigits = lhsNumDigits - rhsNumDigits + 1;	// ignoring rhsShift
+	lhsShift = numDigitsSet - numIntDigits;
+	switch (mode) {
+		case div_mode::euclid:
+			if (quotNumIntegerDigits <= 0) lhsShift = 0;
+			[[fallthrough]];
+		case div_mode::default:
+		case div_mode::precision:
+			delete[] digits;
+			digits = quotient;
+			size = quotSize;
+			lsb = qLSB;
+			msb = quotNumDigits ? (quotNumDigits-1) : 0;
+			isPositive = (isPositive == rhs.isPositive);
+
+			// Shift lsb to index 0
+			while (digits[msb] == 0 && msb > lsb) msb--;
+			if (lsb > 0) {
+				index_type i = 0;
+				for (index_type j = lsb; i < size && j <= msb && j < size; i++, j++)
+					digits[i] = digits[j];
+				while (i <= msb) digits[i++] = 0;
+				msb -= lsb;
+				lsb = 0;
+			}
 			break;
-		} else remainders.emplace(u, i + 1);
-
+		default:
+			delete[] quotient;
+			lhsShift = 0;
 	}
 
-	quotient.removeTrailingZeros();
-	quotient.updateState();
-
-	return returnVal;
+	return lhsShift;
 }
+*/
 
-bigNum bigNum::operator/(const bigNum& divisor) const {
-	
-	bigNum u = *this;
-	bigNum v = divisor;
-	u.updateState();
-	v.updateState();
 
-	// Check if either operand is zero
-	if (u.mIsZero) return bigNum("0");
-	if (v.mIsZero) throw std::invalid_argument("Division by zero");
+/*
+bigNum::index_type bigNum::num_type::longDivideDigit(div_mode mode, digit_type d, index_type quotNumIntegerDigits) {
 
-	// Convert both numbers to integers
-	if (u.mIntegerStart > 0 || v.mIntegerStart > 0) {
-		sizeType shiftAmount = (u.mIntegerStart > v.mIntegerStart) ? u.mIntegerStart : v.mIntegerStart;
-		u.shiftLeft(shiftAmount);
-		v.shiftLeft(shiftAmount);
+	if (d == 0) throw std::invalid_argument("Division by zero");
+	//if (d == 1) return 0;
+
+	// Initialize the quotient
+	if (quotNumIntegerDigits < 0) quotNumIntegerDigits = 0;
+	index_type quotNumDigits = quotNumIntegerDigits;
+	if (mode == div_mode::default) quotNumDigits += 9;
+	else if (mode == div_mode::precision) quotNumDigits = static_cast<index_type>(mPrecision) + 1;
+	if (quotNumDigits > mMaxDigits) throw std::overflow_error("Overflow in longDivideDigit");
+	size_type quotSize = (quotNumDigits > size) ? static_cast<size_type>(quotNumDigits) : size;
+	digit_type *quotient = new digit_type[quotSize]();
+
+	// Divide: this / d = quotient
+	index_type q = quotNumDigits-1;
+	index_type p = 0;				// count number of precise digits
+	digit_type r = 0, qDigit = 0;
+	for (index_type i = 0, j = msb; i < quotNumDigits && q >= 0; i++, j--, q--) {
+		digit_type div = 10*r + (j >= lsb ? digits[j] : 0);	// 2 digit partial dividend
+		qDigit = div / d;
+		r = div % d;
+		quotient[q] = qDigit;
+
+		// Check for termination
+		if (mode == div_mode::default) {
+			if (i >= quotNumIntegerDigits) {	// start counting precision after integer digits
+				// Check for a zero remainder
+				if (r == 0) {
+					if (qDigit == 0) q++;
+					break;
+				}
+				if (p > 0 || qDigit || quotNumIntegerDigits > 0) p++;
+				if (p >= 9) break;
+			}
+		} else if (mode == div_mode::precision) {
+			if (p > 0 || qDigit) p++;
+			if (p >= mPrecision) break;
+		}
 	}
 
-	// Make u.numDigits >= v.numDigits
-	sizeType quotientScalingFactor = 0;
-	if (u.mNumDigits < v.mNumDigits) {
-		quotientScalingFactor = v.mNumDigits - u.mNumDigits;
-		u.shiftLeft(quotientScalingFactor);
+	// Set the result
+	if (q < 0) q = 0;
+	index_type numDigitsSet = quotNumDigits - q;
+	index_type numIntDigits = msb - lsb + 1;
+	index_type lhsShift = numDigitsSet - numIntDigits;
+	switch (mode) {
+		case div_mode::euclid:
+			if (quotNumIntegerDigits <= 0) lhsShift = 0;
+			[[fallthrough]];
+		case div_mode::default:
+		case div_mode::precision:
+			delete[] digits;
+			digits = quotient;
+			size = quotSize;
+			lsb = q;
+			msb = quotNumDigits ? (quotNumDigits-1) : 0;
+
+			// Shift lsb to index 0
+			while (digits[msb] == 0 && msb > lsb) msb--;
+			if (lsb > 0) {
+				index_type i = 0;
+				for (index_type j = lsb; j <= msb && i < size; i++, j++)
+					digits[i] = digits[j];
+				while (i <= msb) digits[i++] = 0;
+				msb -= lsb;
+				lsb = 0;
+			}
+			break;
+		default:
+			delete[] quotient;
+			lhsShift = 0;
 	}
 
-	bigNum r;
-	bigNum quotient = integerLongDivision(u, v, r);				// divide all given digits
-	precisionLongDivision(r, v, quotient, defaultPrecision);	// divide extra digits up to defaultPrecision
-	if (quotientScalingFactor) quotient.shiftRight(quotientScalingFactor);
-
-	// Remove leading and trailing zeros
-	quotient.removeLeadingZeros();
-	quotient.removeTrailingZeros();
-
-	// Check negative operands
-	if (u.mIsNegative != v.mIsNegative)
-		quotient.mIsNegative = true;
-
-	return quotient;
+	return lhsShift;
 }
-
-// Returns true if the division results in a terminating or repeating decimal, false otherwise, does not round
-bool divideWithPrecision(const bigNum& dividend, const bigNum& divisor, bigNum& quotient, sizeType p) {
-
-	bigNum u = dividend;
-	bigNum v = divisor;
-	u.updateState();
-	v.updateState();
-
-	// Check if either operand is zero
-	if (u.mIsZero) {
-		quotient = bigNum("0");
-		return true;
-	}
-	if (v.mIsZero) throw std::invalid_argument("Division by zero");
-
-	// Convert both numbers to integers
-	if (u.mIntegerStart > 0 || v.mIntegerStart > 0) {
-		sizeType shiftAmount = (u.mIntegerStart > v.mIntegerStart) ? u.mIntegerStart : v.mIntegerStart;
-		u.shiftLeft(shiftAmount);
-		v.shiftLeft(shiftAmount);
-	}
-
-	// Make u.numDigits >= v.numDigits
-	sizeType quotientScalingFactor = 0;
-	if (u.mNumDigits < v.mNumDigits) {
-		quotientScalingFactor = v.mNumDigits - u.mNumDigits;
-		u.shiftLeft(quotientScalingFactor);
-	}
-
-	bigNum r;
-	quotient = u.integerLongDivision(u, v, r);						// divide all given digits
-	bool returnVal = u.precisionLongDivision(r, v, quotient, p);	// divide p extra digits
-	if (quotientScalingFactor) quotient.shiftRight(quotientScalingFactor);
-
-	// Remove leading and trailing zeros
-	quotient.removeLeadingZeros();
-	quotient.removeTrailingZeros();
-
-	// Check negative operands
-	if (u.mIsNegative != v.mIsNegative)
-		quotient.mIsNegative = true;
-
-	return returnVal;
-}
-
-bigNum bigNum::operator%(const bigNum& divisor) const {
-
-	bigNum u = *this;
-	bigNum v = divisor;
-
-	if (v.mIsZero)
-		throw std::invalid_argument("Division by zero");
-	u.setPositive();
-	v.setPositive();
-	if (u < v) return u;
-
-	// Convert both numbers to integers
-	sizeType remainderScalingFactor = 0;
-	if (u.mIntegerStart > 0 || v.mIntegerStart > 0) {
-		sizeType shiftAmount = (u.mIntegerStart > v.mIntegerStart) ? u.mIntegerStart : v.mIntegerStart;
-		u.shiftLeft(shiftAmount);
-		v.shiftLeft(shiftAmount);
-		remainderScalingFactor = shiftAmount;
-	}
-
-	bigNum remainder;
-	integerLongDivision(u, v, remainder);
-
-	if (remainderScalingFactor) remainder.shiftRight(remainderScalingFactor);
-
-	remainder.removeLeadingZeros();
-	remainder.removeTrailingZeros();
-	remainder.mIsNegative = this->mIsNegative;	// sign of modulo matches sign of dividend
-
-	return remainder;
-}
-
-/* -------------------------------- */
-/*          Exponentiation          */
-/* ---------------------------------*/
-
-bigNum bigNum::operator^(uint32_t power) const {
-	bigNum result("1");
-	for (uint32_t i = 0; i < power; i++)
-		result = *this * result;
-	result.removeLeadingZeros();		// need this?
-	return result;
-}
-
-
-
-
-
-
-
-
-/* -------------------------------- */
-/*             Factorial		    */
-/* ---------------------------------*/
-
-bigNum factorial(const bigNum &n) {
-	
-	// Check the number is a non-negative integer
-	if (!n.isInteger() || n.isNegative()) return bigNum("0");
-
-	bigNum result = n;
-	bigNum one("1");
-	bigNum i = n - one;
-	while (i != one) {
-		result = result * i;
-		i = i - one;
-	}
-	return result;
-}
-
-
-
-
-
-
-
-
-
-// Old subtraction algo using method of complements (method 2 on wiki)
-
-//bigNum bigNum::absValSubtract(bigNum &lhs, bigNum &rhs) const {
-//	
-//	// Minuend - subtrahend = difference
-//
-//	// Make both integer parts the same length
-//	sizeType lhsIntDigits = lhs.mSize - lhs.mIntegerStart;
-//	sizeType rhsIntDigits = rhs.mSize - rhs.mIntegerStart;
-//	if (lhsIntDigits > rhsIntDigits) rhs.padMSB(lhsIntDigits - rhsIntDigits);
-//	else if (lhsIntDigits < rhsIntDigits) lhs.padMSB(rhsIntDigits - lhsIntDigits);
-//
-//	// Make both fraction parts the same length
-//	sizeType lhsFracDigits = lhs.mIntegerStart;
-//	sizeType rhsFracDigits = rhs.mIntegerStart;
-//	if (lhsFracDigits > rhsFracDigits) rhs.padZerosLSB(lhsFracDigits - rhsFracDigits, true);
-//	else if (lhsFracDigits < rhsFracDigits) lhs.padZerosLSB(rhsFracDigits - lhsFracDigits, true);
-//
-//	// Calculate the 9's complement of the subtrahend
-//	bigNum ninesComplement(rhs.mSize);
-//	for (sizeType i = 0; i < rhs.mSize; i++)
-//		ninesComplement[i] = 9 - rhs.mDigits[i];
-//	ninesComplement.mIntegerStart = rhs.mIntegerStart;
-//	ninesComplement.updateState();
-//
-//	// Add the 9's complement of the subtrahend and the minuend
-//	bigNum sum = absValAdd(lhs, ninesComplement);
-//
-//	bigNum result;
-//
-//	// If the sum contains an extra digit, "carry" it to the LSB by adding 1 and dropping the MSB
-//	if (sum.mNumDigits > lhs.mNumDigits && sum.mNumDigits > rhs.mNumDigits) {	// result is positive
-//		// "end-around carry"
-//
-//		result = bigNum(lhs.mSize);		// set the result's size to the size of an operand, dropping the MSB of the sum
-//		digitType carry = 1;			// begin by adding 1 to the LSB
-//
-//		// Add the digits, starting from the LSB
-//		for (sizeType d = 0; d < result.mSize; d++) {
-//			result[d] = sum.mDigits[d] + result.mDigits[d] + carry;
-//			if (result[d] > 9) {
-//				carry = 1;
-//				result[d] -= 10;
-//			} else {
-//				carry = 0;
-//			}
-//		}
-//	}
-//	// Else the result is negative, find the 9's complement
-//	else {					// result is negative
-//		bigNum sumComplement(sum.mSize);
-//		for (sizeType i = 0; i < sum.mSize; i++)
-//			sumComplement[i] = 9 - sum.mDigits[i];
-//		result = sumComplement;
-//		result.mIsNegative = true;
-//	}
-//	result.mIntegerStart = sum.mIntegerStart;
-//	result.updateState();
-//	return result;
-//}
-
-
-
-// Add'tl check in setKaratsubaDecimalPoint. Should not be needed now that every bigNum has an integer part?
-
-// If either operand had no integer part, the result will be missing leading zeros
-//if (result->mIntegerStart > result->mSize) {
-//	sizeType oldSize = result->mSize;
-//	sizeType numZeros = result->mIntegerStart - oldSize;
-//	sizeType newSize = oldSize + numZeros;
-//	digitType *newData = new digitType[newSize];
-//	sizeType i;
-//
-//	// Copy the digits over, starting from the LSB
-//	for (i = 0; i < oldSize; i++)
-//		newData[i] = mDigits[i];
-//
-//	// Pad the missing zeros
-//	for (; i < newSize; i++)
-//		newData[i] = 0;
-//
-//	// Update mDigits and mSize
-//	delete[] result->mDigits;
-//	result->mDigits = newData;
-//	result->mSize = newSize;
-//}
+*/
