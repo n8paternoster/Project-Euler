@@ -5,13 +5,13 @@
 #include <iostream>
 #include <chrono>
 #include "bigNum.h"
-#include "76-100/91.h"
+#include "76-100/95.h"
 
 int main()
 {
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
-    std::cout << p91();
+    std::cout << p95();
 
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> deltaT = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
